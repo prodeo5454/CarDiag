@@ -192,7 +192,11 @@ export class DataManager {
         
         result.imported.maintenanceRecords = importedCount;
         result.duplicates.maintenanceRecords = data.maintenanceHistory.length - importedCount;
-        MaintenanceTracker.saveMaintenanceHistory(existingHistory);
+        try {
+          localStorage.setItem('cardiag-maintenance-history', JSON.stringify(existingHistory));
+        } catch (error) {
+          result.errors.push('Failed to save maintenance history');
+        }
       }
 
       // Import maintenance schedules
@@ -210,7 +214,11 @@ export class DataManager {
         
         result.imported.schedules = importedCount;
         result.duplicates.schedules = data.maintenanceSchedules.length - importedCount;
-        MaintenanceTracker.saveMaintenanceSchedules(existingSchedules);
+        try {
+          localStorage.setItem('cardiag-maintenance-schedules', JSON.stringify(existingSchedules));
+        } catch (error) {
+          result.errors.push('Failed to save maintenance schedules');
+        }
       }
 
       // Import diagnostic reports
@@ -378,8 +386,12 @@ export class DataManager {
       );
       
       if (filteredHistory.length < history.length) {
-        MaintenanceTracker.saveMaintenanceHistory(filteredHistory);
-        console.log(`Cleaned up ${history.length - filteredHistory.length} old maintenance records`);
+        try {
+          localStorage.setItem('cardiag-maintenance-history', JSON.stringify(filteredHistory));
+          console.log(`Cleaned up ${history.length - filteredHistory.length} old maintenance records`);
+        } catch (error) {
+          console.error('Error cleaning up maintenance history:', error);
+        }
       }
     } catch (error) {
       console.error('Error cleaning up maintenance history:', error);

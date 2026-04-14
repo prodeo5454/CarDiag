@@ -90,6 +90,11 @@ export class VehicleManager {
   }
 
   static getVehicles(): Vehicle[] {
+    // Check if localStorage is available (SSR compatibility)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];
@@ -150,6 +155,11 @@ export class VehicleManager {
 
   // Active Vehicle Management
   static getActiveVehicle(): Vehicle | null {
+    // Check if localStorage is available (SSR compatibility)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return null;
+    }
+    
     const activeId = localStorage.getItem(this.ACTIVE_VEHICLE_KEY);
     if (!activeId) return null;
 
@@ -161,7 +171,10 @@ export class VehicleManager {
     const vehicle = this.getVehicle(vehicleId);
     if (!vehicle) return false;
 
-    localStorage.setItem(this.ACTIVE_VEHICLE_KEY, vehicleId);
+    // Check if localStorage is available (SSR compatibility)
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.ACTIVE_VEHICLE_KEY, vehicleId);
+    }
     return true;
   }
 
@@ -371,6 +384,11 @@ export class VehicleManager {
 
   // Helper methods
   private static saveVehicles(vehicles: Vehicle[]): void {
+    // Check if localStorage is available (SSR compatibility)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return;
+    }
+    
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(vehicles));
     } catch (error) {
@@ -382,11 +400,19 @@ export class VehicleManager {
     // Clean up maintenance history, schedules, etc. for deleted vehicle
     const maintenanceHistory = MaintenanceTracker.getMaintenanceHistory();
     const filteredHistory = maintenanceHistory.filter(record => record.vehicleId !== vehicleId);
-    MaintenanceTracker.saveMaintenanceHistory(filteredHistory);
+    try {
+      localStorage.setItem('cardiag-maintenance-history', JSON.stringify(filteredHistory));
+    } catch (error) {
+      console.error('Error cleaning up maintenance history:', error);
+    }
 
     const schedules = MaintenanceTracker.getMaintenanceSchedules();
     const filteredSchedules = schedules.filter(schedule => schedule.vehicleId !== vehicleId);
-    MaintenanceTracker.saveMaintenanceSchedules(filteredSchedules);
+    try {
+      localStorage.setItem('cardiag-maintenance-schedules', JSON.stringify(filteredSchedules));
+    } catch (error) {
+      console.error('Error cleaning up maintenance schedules:', error);
+    }
   }
 
   private static generateId(): string {

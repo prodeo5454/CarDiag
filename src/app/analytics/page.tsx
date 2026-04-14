@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -28,17 +28,12 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<number>(12);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'overview' | 'maintenance' | 'health' | 'costs' | 'predictions'>('overview');
+  const [vehicles, setVehicles] = useState<any[]>([]);
 
-  const vehicles = VehicleManager.getVehicles();
-
-  useEffect(() => {
-    loadAnalytics();
-  }, [selectedVehicle, timeRange]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     setLoading(true);
     try {
-      const data = selectedVehicle === 'fleet' 
+      const data = selectedVehicle === 'fleet'
         ? Analytics.generateFleetAnalytics()
         : Analytics.generateAnalytics(selectedVehicle, timeRange);
       setAnalyticsData(data);
@@ -47,7 +42,14 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedVehicle, timeRange]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const loadedVehicles = VehicleManager.getVehicles();
+    setVehicles(loadedVehicles);
+    void loadAnalytics();
+  }, [loadAnalytics]);
 
   const exportAnalytics = () => {
     if (!analyticsData) return;

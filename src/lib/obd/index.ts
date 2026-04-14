@@ -1,5 +1,7 @@
 export * from './elm327';
 export * from './pids';
+export * from './ble-constants';
+export * from './native-ble-platform';
 export * from './connection';
 export * from './OBDContext';
 export * from './protocol-detection';

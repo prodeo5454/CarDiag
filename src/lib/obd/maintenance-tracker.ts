@@ -109,6 +109,11 @@ export class MaintenanceTracker {
   }
 
   static getMaintenanceHistory(vehicleId?: string): MaintenanceRecord[] {
+    // Check if localStorage is available (SSR compatibility)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
       const history: MaintenanceRecord[] = data ? JSON.parse(data) : [];
@@ -172,6 +177,11 @@ export class MaintenanceTracker {
   }
 
   static getMaintenanceSchedules(vehicleId?: string): MaintenanceSchedule[] {
+    // Check if localStorage is available (SSR compatibility)
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      return [];
+    }
+    
     try {
       const data = localStorage.getItem(this.SCHEDULE_KEY);
       const schedules: MaintenanceSchedule[] = data ? JSON.parse(data) : [];

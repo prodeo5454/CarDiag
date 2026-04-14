@@ -126,9 +126,9 @@ export default function SettingsPage() {
     setPreferences(prev => ({
       ...prev,
       [category]: {
-        ...prev[category],
+        ...(typeof prev[category] === 'object' ? prev[category] : {}),
         [subcategory]: {
-          ...(prev[category] as any)[subcategory],
+          ...((prev[category] as any)?.[subcategory] || {}),
           [key]: value
         }
       }
@@ -185,8 +185,6 @@ export default function SettingsPage() {
   const clearAllData = () => {
     if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
       localStorage.clear();
-      MaintenanceTracker.saveMaintenanceHistory([]);
-      MaintenanceTracker.saveMaintenanceSchedules([]);
       alert('All data cleared. The app will reload.');
       window.location.reload();
     }

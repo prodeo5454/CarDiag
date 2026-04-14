@@ -26,11 +26,14 @@ export default function VehiclesPage() {
 
   // Load vehicles from storage
   useEffect(() => {
-    const loadedVehicles = VehicleManager.getVehicles();
-    setVehicles(loadedVehicles);
-    
-    const active = VehicleManager.getActiveVehicle();
-    setActiveVehicle(active);
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      const loadedVehicles = VehicleManager.getVehicles();
+      setVehicles(loadedVehicles);
+      
+      const active = VehicleManager.getActiveVehicle();
+      setActiveVehicle(active);
+    }
   }, []);
 
   // Build current vehicle from real ECU data if connected
@@ -62,6 +65,7 @@ export default function VehiclesPage() {
     engine: '',
     transmission: '',
     fuelType: 'gasoline' as const,
+    odometer: 0,
     currentMileage: 0,
     licensePlate: '',
     color: '',
@@ -110,6 +114,7 @@ export default function VehiclesPage() {
       engine: '',
       transmission: '',
       fuelType: 'gasoline',
+      odometer: 0,
       currentMileage: 0,
       licensePlate: '',
       color: '',
@@ -179,82 +184,74 @@ export default function VehiclesPage() {
   const makeInfo = vehicleMakes.find(m => m.name === selectedMake);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Vehicle Profiles</h1>
-          <p className="text-surface-400 text-sm mt-1">Manage your vehicles - {vehicles.length} vehicles registered</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Vehicle Profiles</h1>
+          <p className="text-surface-400 text-xs sm:text-sm mt-1">{vehicles.length} vehicles registered</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShowStats(!showStats)} className="btn-secondary flex items-center gap-2 text-sm">
-            <TrendingUp className="w-4 h-4" /> {showStats ? 'Hide' : 'Show'} Stats
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setShowStats(!showStats)} className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            <TrendingUp className="w-3.5 h-3.5 sm:w-4 h-4" /> <span className="hidden xs:inline">{showStats ? 'Hide' : 'Show'} Stats</span>
           </button>
-          <button onClick={exportVehicles} className="btn-secondary flex items-center gap-2 text-sm">
-            <Download className="w-4 h-4" /> Export
+          <button onClick={exportVehicles} className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            <Download className="w-3.5 h-3.5 sm:w-4 h-4" /> <span className="hidden xs:inline">Export</span>
           </button>
-          <label className="btn-secondary flex items-center gap-2 text-sm cursor-pointer">
-            <Upload className="w-4 h-4" /> Import
-            <input type="file" accept=".json" onChange={importVehicles} className="hidden" />
-          </label>
           {!isConnected && (
-            <Link href="/connection" className="btn-primary flex items-center gap-2 text-sm">
-              <Plug className="w-4 h-4" /> Connect Adapter
+            <Link href="/connection" className="btn-primary flex items-center gap-2 text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+              <Plug className="w-3.5 h-3.5 sm:w-4 h-4" /> Connect
             </Link>
           )}
-          <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary flex items-center gap-2 text-sm">
-            <Plus className="w-4 h-4" /> Add Vehicle
+          <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary flex items-center gap-2 text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2">
+            <Plus className="w-3.5 h-3.5 sm:w-4 h-4" /> Add
           </button>
         </div>
       </div>
 
       {/* Fleet Statistics */}
       {showStats && vehicles.length > 0 && (
-        <div className="glass-card p-6">
+        <div className="glass-card p-4 sm:p-6">
           <h2 className="section-title mb-4">Fleet Overview</h2>
-          <div className="grid grid-cols-4 gap-4">
-            <div className="stat-card">
-              <span className="text-surface-400 text-sm">Total Vehicles</span>
-              <span className="text-3xl font-bold text-white">{vehicles.length}</span>
-              <span className="text-xs text-surface-400">In fleet</span>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="stat-card p-3 sm:p-4">
+              <span className="text-surface-400 text-[10px] sm:text-sm">Total Vehicles</span>
+              <span className="text-xl sm:text-3xl font-bold text-white">{vehicles.length}</span>
             </div>
-            <div className="stat-card">
-              <span className="text-surface-400 text-sm">Total Mileage</span>
-              <span className="text-3xl font-bold text-brand-400">
+            <div className="stat-card p-3 sm:p-4">
+              <span className="text-surface-400 text-[10px] sm:text-sm">Total Mileage</span>
+              <span className="text-xl sm:text-3xl font-bold text-brand-400">
                 {vehicles.reduce((sum, v) => sum + v.currentMileage, 0).toLocaleString()}
               </span>
-              <span className="text-xs text-surface-400">Combined miles</span>
             </div>
-            <div className="stat-card">
-              <span className="text-surface-400 text-sm">Average Age</span>
-              <span className="text-3xl font-bold text-success">
+            <div className="stat-card p-3 sm:p-4">
+              <span className="text-surface-400 text-[10px] sm:text-sm">Average Age</span>
+              <span className="text-xl sm:text-3xl font-bold text-success">
                 {vehicles.length > 0 ? Math.round(vehicles.reduce((sum, v) => sum + (new Date().getFullYear() - v.year), 0) / vehicles.length) : 0}
               </span>
-              <span className="text-xs text-surface-400">Years old</span>
             </div>
-            <div className="stat-card">
-              <span className="text-surface-400 text-sm">Active Vehicle</span>
-              <span className="text-3xl font-bold text-warning">{activeVehicle?.name || 'None'}</span>
-              <span className="text-xs text-surface-400">Currently selected</span>
+            <div className="stat-card p-3 sm:p-4">
+              <span className="text-surface-400 text-[10px] sm:text-sm">Active Vehicle</span>
+              <span className="text-sm sm:text-xl font-bold text-warning truncate block">{activeVehicle?.name || 'None'}</span>
             </div>
           </div>
         </div>
       )}
 
       {/* Search and Filter */}
-      <div className="glass-card p-4">
-        <div className="flex items-center gap-4">
+      <div className="glass-card p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 h-4 text-surface-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search vehicles..."
-              className="input-field w-full pl-10 text-sm"
+              className="input-field w-full pl-9 sm:pl-10 text-xs sm:text-sm py-1.5 sm:py-2"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
             {[
               { value: 'all', label: 'All' },
               { value: 'active', label: 'Active' },
@@ -263,7 +260,7 @@ export default function VehiclesPage() {
               <button
                 key={value}
                 onClick={() => setFilterStatus(value as typeof filterStatus)}
-                className={`px-3 py-1 rounded-lg text-xs transition-all ${
+                className={`px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs transition-all whitespace-nowrap ${
                   filterStatus === value
                     ? 'bg-brand-500/20 text-brand-400 border border-brand-500'
                     : 'bg-surface-800/50 text-surface-300 border border-surface-700/30 hover:bg-surface-800'
@@ -278,58 +275,57 @@ export default function VehiclesPage() {
 
       {/* Current Vehicle from ECU */}
       {currentVehicle && (
-        <div className="glass-card p-5 border-l-4 border-l-brand-500">
+        <div className="glass-card p-4 sm:p-5 border-l-4 border-l-brand-500">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-brand-400" />
-              <h3 className="text-lg font-bold text-white">Current Vehicle (ECU)</h3>
+              <CheckCircle2 className="w-4 h-4 sm:w-5 h-5 text-brand-400" />
+              <h3 className="text-sm sm:text-lg font-bold text-white uppercase tracking-tight">ECU Detected</h3>
             </div>
-            <span className="badge badge-success text-xs">Connected</span>
+            <span className="badge badge-success text-[10px]">Connected</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <p className="text-xs text-surface-500 mb-1">VIN</p>
-              <p className="text-sm text-surface-300 font-mono">{currentVehicle.vin}</p>
+              <p className="text-[10px] text-surface-500 mb-0.5">VIN</p>
+              <p className="text-xs text-surface-300 font-mono truncate">{currentVehicle.vin}</p>
             </div>
             <div>
-              <p className="text-xs text-surface-500 mb-1">Protocol</p>
-              <p className="text-sm text-surface-300">{connectionState.protocol || 'Unknown'}</p>
+              <p className="text-[10px] text-surface-500 mb-0.5">Protocol</p>
+              <p className="text-xs text-surface-300 truncate">{connectionState.protocol || 'Unknown'}</p>
             </div>
             <div>
-              <p className="text-xs text-surface-500 mb-1">ECU Addresses</p>
-              <p className="text-sm text-surface-300 font-mono">{connectionState.ecuAddresses.join(', ') || 'Unknown'}</p>
+              <p className="text-[10px] text-surface-500 mb-0.5">ECU Addr</p>
+              <p className="text-xs text-surface-300 font-mono">{connectionState.ecuAddresses[0] || 'Unknown'}</p>
             </div>
             <div>
-              <p className="text-xs text-surface-500 mb-1">Supported PIDs</p>
-              <p className="text-sm text-surface-300">{connectionState.supportedPIDs.length}</p>
+              <p className="text-[10px] text-surface-500 mb-0.5">PIDs</p>
+              <p className="text-xs text-surface-300">{connectionState.supportedPIDs.length} available</p>
             </div>
           </div>
           <div className="mt-3 flex gap-2">
-            <button className="btn-secondary text-xs">Edit Profile</button>
-            <button className="btn-secondary text-xs">Save as Profile</button>
+            <button className="btn-primary flex-1 text-[10px] py-1.5">Save Profile</button>
           </div>
         </div>
       )}
 
       {/* Add Vehicle Form */}
       {showAddForm && (
-        <div className="glass-card p-6 animate-scale-in">
+        <div className="glass-card p-4 sm:p-6 animate-scale-in">
           <h2 className="section-title mb-4">Add New Vehicle</h2>
-          <div className="grid grid-cols-12 gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Make Selector */}
-            <div className="col-span-4">
-              <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">Make</label>
+            <div className="w-full lg:w-1/3">
+              <label className="text-[10px] text-surface-400 uppercase tracking-wider font-medium mb-2 block">Make</label>
               <div className="relative mb-2">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400" />
                 <input
                   type="text"
                   value={searchMake}
                   onChange={(e) => { setSearchMake(e.target.value); setSelectedMake(''); setSelectedModel(''); }}
                   placeholder="Search make..."
-                  className="input-field w-full pl-10 text-sm"
+                  className="input-field w-full pl-9 text-xs py-1.5"
                 />
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-40 lg:max-h-64 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
                 {filteredMakes.map(make => {
                   const info = vehicleMakes.find(m => m.name === make);
                   return (
@@ -337,91 +333,75 @@ export default function VehiclesPage() {
                       key={make}
                       onClick={() => { setSelectedMake(make); setSelectedModel(''); setSelectedYear(''); setSearchMake(''); }}
                       className={cn(
-                        'w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-all',
+                        'w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition-all',
                         selectedMake === make ? 'bg-brand-600/15 text-brand-400 border border-brand-500/20' : 'text-surface-300 hover:bg-surface-800/50'
                       )}
                     >
                       <span className="flex items-center gap-2">
-                        <Car className="w-4 h-4 text-surface-500" />
+                        <Car className="w-3.5 h-3.5 text-surface-500" />
                         {make}
                       </span>
-                      {info && <span className="text-[10px] text-surface-500 flex items-center gap-1"><Globe className="w-3 h-3" />{info.country}</span>}
+                      {info && <span className="text-[9px] text-surface-500">{info.country}</span>}
                     </button>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-surface-500 mt-2">{allMakes.length} manufacturers supported</p>
             </div>
 
             {/* Model + Year + Details */}
-            <div className="col-span-8">
-              {selectedMake && (
-                <div className="animate-fade-in">
-                  <div className="flex items-center gap-2 mb-4 text-sm text-surface-300">
-                    <span className="text-brand-400 font-medium">{selectedMake}</span>
-                    {makeInfo && <span className="text-xs text-surface-500">({makeInfo.country})</span>}
-                    {selectedModel && <><ChevronRight className="w-3 h-3 text-surface-500" /><span className="text-brand-400 font-medium">{selectedModel}</span></>}
-                    {selectedYear && <><ChevronRight className="w-3 h-3 text-surface-500" /><span className="text-brand-400 font-medium">{selectedYear}</span></>}
+            <div className="flex-1">
+              {selectedMake ? (
+                <div className="animate-fade-in space-y-4">
+                  <div className="flex items-center gap-2 text-xs text-surface-300">
+                    <span className="text-brand-400 font-bold">{selectedMake}</span>
+                    {selectedModel && <><ChevronRight className="w-3 h-3 text-surface-500" /><span className="text-brand-400 font-bold">{selectedModel}</span></>}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">Model</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="col-span-1">
+                      <label className="text-[10px] text-surface-400 uppercase mb-1 block">Model</label>
                       <select
                         value={selectedModel}
                         onChange={(e) => { setSelectedModel(e.target.value); setSelectedYear(''); }}
-                        className="select-field w-full text-sm"
+                        className="select-field w-full text-xs py-1.5"
                       >
-                        <option value="">Select Model</option>
+                        <option value="">Model</option>
                         {models.map(m => <option key={m} value={m}>{m}</option>)}
                       </select>
                     </div>
-                    <div>
-                      <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">Year</label>
-                      <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="select-field w-full text-sm" disabled={!selectedModel}>
-                        <option value="">Select Year</option>
+                    <div className="col-span-1">
+                      <label className="text-[10px] text-surface-400 uppercase mb-1 block">Year</label>
+                      <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="select-field w-full text-xs py-1.5" disabled={!selectedModel}>
+                        <option value="">Year</option>
                         {years.map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
                     </div>
-                    <div>
-                      <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">Engine</label>
-                      <select className="select-field w-full text-sm" disabled={!selectedModel}>
-                        <option value="">Select Engine</option>
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="text-[10px] text-surface-400 uppercase mb-1 block">Engine</label>
+                      <select className="select-field w-full text-xs py-1.5" disabled={!selectedModel}>
+                        <option value="">Engine</option>
                         {engines.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">Transmission</label>
-                      <select className="select-field w-full text-sm" disabled={!selectedModel}>
-                        <option value="">Select Transmission</option>
-                        {transmissions.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                    <div className="col-span-1">
+                      <label className="text-[10px] text-surface-400 uppercase mb-1 block">VIN</label>
+                      <input type="text" placeholder="VIN..." className="input-field w-full text-xs py-1.5" maxLength={17} />
                     </div>
-                    <div>
-                      <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">VIN (Optional)</label>
-                      <input type="text" placeholder="Enter VIN..." className="input-field w-full text-sm" maxLength={17} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-surface-400 uppercase tracking-wider font-medium mb-2 block">Mileage</label>
-                      <input type="number" placeholder="Current mileage..." className="input-field w-full text-sm" />
+                    <div className="col-span-1">
+                      <label className="text-[10px] text-surface-400 uppercase mb-1 block">Mileage</label>
+                      <input type="number" placeholder="0" className="input-field w-full text-xs py-1.5" />
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowAddForm(false)} className="btn-secondary text-sm">Cancel</button>
-                    <button className="btn-primary text-sm">Save Vehicle</button>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button onClick={() => setShowAddForm(false)} className="btn-secondary text-xs px-4 py-1.5">Cancel</button>
+                    <button className="btn-primary text-xs px-4 py-1.5">Save Vehicle</button>
                   </div>
                 </div>
-              )}
-              {!selectedMake && (
-                <div className="flex items-center justify-center h-full text-surface-500 text-sm">
-                  <div className="text-center">
-                    <Car className="w-10 h-10 mx-auto mb-2 text-surface-600" />
-                    <p>Select a make from the list to begin</p>
-                  </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-surface-500">
+                  <Car className="w-8 h-8 mb-2 opacity-20" />
+                  <p className="text-xs">Select a manufacturer to begin</p>
                 </div>
               )}
             </div>
@@ -430,85 +410,56 @@ export default function VehiclesPage() {
       )}
 
       {/* Vehicle List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {/* Current Vehicle from ECU */}
-        {currentVehicle && (
-          <div className="glass-card-hover p-5 border-l-4 border-l-brand-500">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                  <Car className="w-5 h-5 text-brand-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">{currentVehicle.year} {currentVehicle.make} {currentVehicle.model}</h3>
-                  <span className="text-xs text-surface-400">{currentVehicle.name}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="badge badge-success text-xs">Connected</span>
-              </div>
-            </div>
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between"><span className="text-surface-500">VIN</span><span className="text-surface-300 font-mono text-xs">{currentVehicle.vin}</span></div>
-              <div className="flex justify-between"><span className="text-surface-500">Protocol</span><span className="text-surface-300">{connectionState.protocol || 'Unknown'}</span></div>
-              <div className="flex justify-between"><span className="text-surface-500">ECU Addresses</span><span className="text-surface-300 font-mono text-xs">{connectionState.ecuAddresses.join(', ') || 'Unknown'}</span></div>
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button className="btn-secondary flex-1 text-xs">Save as Profile</button>
-            </div>
-          </div>
-        )}
-
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {/* Saved Vehicles */}
         {filteredVehicles.map(vehicle => {
           const isActive = activeVehicle?.id === vehicle.id;
           const stats = VehicleManager.getVehicleStats(vehicle.id);
           
           return (
-            <div key={vehicle.id} className={cn('glass-card-hover p-5', isActive && 'border-l-4 border-l-brand-500')}>
+            <div key={vehicle.id} className={cn('glass-card-hover p-4 sm:p-5', isActive && 'border-l-4 border-l-brand-500')}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', 
+                  <div className={cn('w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center',
                     isActive ? 'bg-brand-500/10' : 'bg-surface-800/50')}>
-                    <Car className={cn('w-5 h-5', isActive ? 'text-brand-400' : 'text-surface-400')} />
+                    <Car className={cn('w-4 h-4 sm:w-5 h-5', isActive ? 'text-brand-400' : 'text-surface-400')} />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">{vehicle.year} {vehicle.make} {vehicle.model}</h3>
-                    <span className="text-xs text-surface-400">{vehicle.name}</span>
-                    {vehicle.isPrimary && <Star className="w-3 h-3 text-warning inline ml-1" />}
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-white truncate">{vehicle.year} {vehicle.make} {vehicle.model}</h3>
+                    <p className="text-[10px] text-surface-500 truncate">{vehicle.name}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  {isActive && <span className="badge badge-success text-xs">Active</span>}
-                  <button className="p-1.5 rounded-lg hover:bg-surface-700/50 text-surface-400 hover:text-white transition-all">
+                  {isActive && <span className="badge badge-success text-[10px] px-1.5 py-0">Active</span>}
+                  <button className="p-1.5 rounded-lg hover:bg-surface-700/50 text-surface-400">
                     <Settings className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
               
-              <div className="space-y-1.5 text-sm">
-                {vehicle.vin && <div className="flex justify-between"><span className="text-surface-500">VIN</span><span className="text-surface-300 font-mono text-xs">{vehicle.vin}</span></div>}
-                {vehicle.engine && <div className="flex justify-between"><span className="text-surface-500">Engine</span><span className="text-surface-300">{vehicle.engine}</span></div>}
-                {vehicle.transmission && <div className="flex justify-between"><span className="text-surface-500">Trans</span><span className="text-surface-300">{vehicle.transmission}</span></div>}
-                <div className="flex justify-between"><span className="text-surface-500">Mileage</span><span className="text-surface-300">{vehicle.currentMileage.toLocaleString()} mi</span></div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] sm:text-xs">
+                <div className="flex justify-between"><span className="text-surface-500">VIN</span><span className="text-surface-300 font-mono truncate ml-2">{vehicle.vin ? `...${vehicle.vin.slice(-6)}` : '--'}</span></div>
+                <div className="flex justify-between"><span className="text-surface-500">Mileage</span><span className="text-surface-300">{vehicle.currentMileage.toLocaleString()}</span></div>
                 <div className="flex justify-between"><span className="text-surface-500">Fuel</span><span className="text-surface-300 capitalize">{vehicle.fuelType}</span></div>
-                {vehicle.licensePlate && <div className="flex justify-between"><span className="text-surface-500">Plate</span><span className="text-surface-300">{vehicle.licensePlate}</span></div>}
+                <div className="flex justify-between"><span className="text-surface-500">Plate</span><span className="text-surface-300">{vehicle.licensePlate || '--'}</span></div>
               </div>
 
-              {/* Vehicle Stats */}
-              <div className="mt-3 pt-3 border-t border-surface-700/50">
-                <div className="grid grid-cols-3 gap-2 text-xs">
+              {/* Mini Stats Bar */}
+              <div className="mt-4 pt-3 border-t border-surface-700/30">
+                <div className="flex justify-between items-center px-1">
                   <div className="text-center">
-                    <p className="text-surface-400">Services</p>
-                    <p className="text-white font-bold">{stats.totalServices}</p>
+                    <p className="text-[9px] text-surface-500 uppercase">Services</p>
+                    <p className="text-xs font-bold text-white">{stats.totalServices}</p>
                   </div>
+                  <div className="h-6 w-px bg-surface-700/50" />
                   <div className="text-center">
-                    <p className="text-surface-400">Total Cost</p>
-                    <p className="text-white font-bold">${stats.totalCost.toFixed(0)}</p>
+                    <p className="text-[9px] text-surface-500 uppercase">Total Cost</p>
+                    <p className="text-xs font-bold text-white">${stats.totalCost.toFixed(0)}</p>
                   </div>
+                  <div className="h-6 w-px bg-surface-700/50" />
                   <div className="text-center">
-                    <p className="text-surface-400">Health</p>
-                    <p className={cn('font-bold', stats.totalServices === 0 ? 'text-success' : 'text-warning')}>
+                    <p className="text-[9px] text-surface-500 uppercase">Health</p>
+                    <p className={cn('text-xs font-bold', stats.totalServices === 0 ? 'text-success' : 'text-warning')}>
                       {stats.totalServices === 0 ? 'Good' : 'Check'}
                     </p>
                   </div>
@@ -516,21 +467,21 @@ export default function VehiclesPage() {
               </div>
 
               <div className="flex gap-2 mt-4">
-                {!isActive && (
+                {!isActive ? (
                   <button 
                     onClick={() => setAsActive(vehicle.id)}
-                    className="btn-primary flex-1 text-xs"
+                    className="btn-primary flex-1 text-[10px] py-1.5"
                   >
-                    Set Active
+                    Activate
                   </button>
+                ) : (
+                  <button className="btn-secondary flex-1 text-[10px] py-1.5">Manage</button>
                 )}
-                <button className="btn-secondary flex-1 text-xs">View Details</button>
-                <button 
+                <button
                   onClick={() => deleteVehicle(vehicle.id)}
-                  className="btn-secondary text-xs p-2"
-                  title="Delete"
+                  className="btn-secondary px-2 text-danger hover:bg-danger/10"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

@@ -156,35 +156,35 @@ export default function DiagnosticsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Diagnostics</h1>
-          <p className="text-surface-400 text-sm mt-1">Read and clear Diagnostic Trouble Codes from the ECU</p>
+          <p className="text-surface-400 text-sm mt-1">Read and clear DTCs from the ECU</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={handleClear}
             disabled={!isConnected || clearing || activeCodes.length === 0}
-            className="btn-danger flex items-center gap-2 text-sm disabled:opacity-50"
+            className="btn-danger flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5 disabled:opacity-50"
           >
             {clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            {clearing ? 'Clearing...' : 'Clear Codes'}
+            {clearing ? 'Clearing...' : 'Clear'}
           </button>
-          <button className="btn-secondary flex items-center gap-2 text-sm" disabled={!scanComplete}>
+          <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5" disabled={!scanComplete}>
             <Download className="w-4 h-4" /> Export
           </button>
           {isConnected ? (
             <button
               onClick={startScan}
               disabled={scanning}
-              className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50"
+              className="btn-primary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5 disabled:opacity-50"
             >
               <Scan className={cn('w-4 h-4', scanning && 'animate-spin')} />
-              {scanning ? 'Reading ECU...' : 'Scan Vehicle'}
+              {scanning ? 'Reading...' : 'Scan'}
             </button>
           ) : (
-            <Link href="/connection" className="btn-primary flex items-center gap-2 text-sm">
-              <Plug className="w-4 h-4" /> Connect Adapter
+            <Link href="/connection" className="btn-primary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5">
+              <Plug className="w-4 h-4" /> Connect
             </Link>
           )}
         </div>
@@ -192,10 +192,10 @@ export default function DiagnosticsPage() {
 
       {/* Connection Banner */}
       {!isConnected && (
-        <div className="glass-card p-8 text-center border-l-4 border-l-brand-500">
-          <Plug className="w-12 h-12 text-surface-600 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-white mb-2">Connect to Your Vehicle</h3>
-          <p className="text-surface-400 text-sm max-w-md mx-auto mb-4">
+        <div className="glass-card p-6 sm:p-8 text-center border-l-4 border-l-brand-500">
+          <Plug className="w-10 h-10 sm:w-12 sm:h-12 text-surface-600 mx-auto mb-3" />
+          <h3 className="text-base sm:text-lg font-medium text-white mb-2">Connect to Your Vehicle</h3>
+          <p className="text-surface-400 text-xs sm:text-sm max-w-md mx-auto mb-4">
             Plug your OBD-II adapter into the vehicle, then pair it on the Connection page to read and clear DTCs.
           </p>
           <Link href="/connection" className="btn-primary inline-flex items-center gap-2 text-sm">
@@ -206,12 +206,12 @@ export default function DiagnosticsPage() {
 
       {/* Scan Info */}
       {isConnected && scanComplete && (
-        <div className="glass-card p-4">
+        <div className="glass-card p-3 sm:p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-surface-300">Last scan completed</span>
-            <span className="text-xs text-surface-500">{new Date().toLocaleTimeString()}</span>
+            <span className="text-xs sm:text-sm text-surface-300">Last scan completed</span>
+            <span className="text-[10px] sm:text-xs text-surface-500">{new Date().toLocaleTimeString()}</span>
           </div>
-          <div className="mt-2 flex gap-6 text-xs text-surface-500">
+          <div className="mt-2 flex gap-4 sm:gap-6 text-[10px] sm:text-xs text-surface-500">
             <span>Stored: {storedRaw.length}</span>
             <span>Pending: {pendingRaw.length}</span>
             <span>Permanent: {permanentRaw.length}</span>
@@ -220,50 +220,52 @@ export default function DiagnosticsPage() {
       )}
 
       {/* Search & Filters */}
-      <div className="glass-card p-4">
-        <div className="flex items-center gap-4">
+      <div className="glass-card p-3 sm:p-4 space-y-3 sm:space-y-0">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by code (P0420), keyword (misfire), or system (emissions)..."
-              className="input-field w-full pl-10"
+              placeholder="Search by code or keyword..."
+              className="input-field w-full pl-10 text-sm py-2"
             />
           </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as DTCCategory | 'all')}
-            className="select-field"
-          >
-            <option value="all">All Categories</option>
-            <option value="powertrain">Powertrain (P)</option>
-            <option value="body">Body (B)</option>
-            <option value="chassis">Chassis (C)</option>
-            <option value="network">Network (U)</option>
-          </select>
-          <select
-            value={selectedSeverity}
-            onChange={(e) => setSelectedSeverity(e.target.value as DTCSeverity | 'all')}
-            className="select-field"
-          >
-            <option value="all">All Severity</option>
-            <option value="critical">Critical</option>
-            <option value="warning">Warning</option>
-            <option value="info">Info</option>
-            <option value="pending">Pending</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value as DTCCategory | 'all')}
+              className="select-field text-xs sm:text-sm py-2 px-3 flex-1 lg:flex-initial"
+            >
+              <option value="all">All Categories</option>
+              <option value="powertrain">Powertrain (P)</option>
+              <option value="body">Body (B)</option>
+              <option value="chassis">Chassis (C)</option>
+              <option value="network">Network (U)</option>
+            </select>
+            <select
+              value={selectedSeverity}
+              onChange={(e) => setSelectedSeverity(e.target.value as DTCSeverity | 'all')}
+              className="select-field text-xs sm:text-sm py-2 px-3 flex-1 lg:flex-initial"
+            >
+              <option value="all">All Severity</option>
+              <option value="critical">Critical</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Results Count */}
       {(searchQuery || scanComplete) && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-surface-400">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs sm:text-sm text-surface-400">
             Found <span className="text-white font-medium">{filteredCodes.length}</span> trouble code{filteredCodes.length !== 1 ? 's' : ''}
           </p>
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-3 text-[10px] sm:text-xs">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-danger" /> Critical: {filteredCodes.filter(c => c.severity === 'critical').length}</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning" /> Warning: {filteredCodes.filter(c => c.severity === 'warning').length}</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-info" /> Info: {filteredCodes.filter(c => c.severity === 'info').length}</span>
@@ -282,68 +284,62 @@ export default function DiagnosticsPage() {
               {/* Code Header */}
               <button
                 onClick={() => setExpandedCode(isExpanded ? null : code.code)}
-                className="w-full p-4 flex items-center gap-4 hover:bg-surface-800/30 transition-colors text-left"
+                className="w-full p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-surface-800/30 transition-colors text-left"
               >
                 {severityIcon(code.severity)}
-                <span className={cn('badge font-mono', severityBadge(code.severity))}>{code.code}</span>
+                <span className={cn('badge font-mono text-[10px] sm:text-xs', severityBadge(code.severity))}>{code.code}</span>
                 {tag && (
-                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full',
+                  <span className={cn('text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full',
                     tag === 'stored' ? 'bg-warning/10 text-warning' :
                     tag === 'pending' ? 'bg-info/10 text-info' :
                     'bg-danger/10 text-danger'
                   )}>{tag}</span>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{code.description}</p>
-                  <p className="text-xs text-surface-400 mt-0.5">{code.system} | {categoryLabel[code.category]}</p>
+                  <p className="text-xs sm:text-sm font-medium text-white truncate">{code.description}</p>
+                  <p className="text-[9px] sm:text-xs text-surface-400 mt-0.5">{code.system} | {categoryLabel[code.category]}</p>
                 </div>
-                {code.estimatedCost && (
-                  <div className="text-right mr-4 hidden sm:block">
-                    <p className="text-xs text-surface-400">Est. Repair</p>
-                    <p className="text-sm font-medium text-white">${code.estimatedCost.min} - ${code.estimatedCost.max}</p>
-                  </div>
-                )}
                 {isExpanded ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
               </button>
 
               {/* Expanded Detail */}
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-surface-700/50 animate-slide-up">
+                <div className="px-3 sm:px-4 pb-4 border-t border-surface-700/50 animate-slide-up">
                   {/* Code Interpretation */}
                   {interpretation && (
                     <div className="mt-4 p-3 rounded-xl bg-surface-800/50 border border-surface-700/30">
-                      <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Code Breakdown</h4>
-                      <div className="grid grid-cols-4 gap-3 text-sm">
+                      <h4 className="text-[9px] sm:text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Code Breakdown</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                         <div>
-                          <span className="text-surface-500 text-xs block">Prefix</span>
+                          <span className="text-surface-500 text-[10px] block">Prefix</span>
                           <span className="text-white font-mono font-bold">{interpretation.prefix}</span>
-                          <span className="text-xs text-surface-400 ml-1">({interpretation.category})</span>
+                          <span className="text-[10px] text-surface-400 ml-1">({interpretation.category})</span>
                         </div>
                         <div>
-                          <span className="text-surface-500 text-xs block">Type</span>
-                          <span className="text-white text-xs">{interpretation.type}</span>
+                          <span className="text-surface-500 text-[10px] block">Type</span>
+                          <span className="text-white text-[10px]">{interpretation.type}</span>
                         </div>
                         <div>
-                          <span className="text-surface-500 text-xs block">Subsystem</span>
+                          <span className="text-surface-500 text-[10px] block">Subsystem</span>
                           <span className="text-white font-mono">{interpretation.number.substring(0, 1)}xx</span>
                         </div>
                         <div>
-                          <span className="text-surface-500 text-xs block">Specific Fault</span>
+                          <span className="text-surface-500 text-[10px] block">Specific Fault</span>
                           <span className="text-white font-mono">x{interpretation.number.substring(1)}</span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     {/* Possible Causes */}
                     <div>
-                      <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5" /> Possible Causes
+                      <h4 className="text-[9px] sm:text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Possible Causes
                       </h4>
-                      <ul className="space-y-1.5">
+                      <ul className="space-y-1">
                         {code.possibleCauses.map((cause, i) => (
-                          <li key={i} className="text-sm text-surface-300 flex items-start gap-2">
+                          <li key={i} className="text-[11px] sm:text-sm text-surface-300 flex items-start gap-2">
                             <ArrowRight className="w-3 h-3 text-surface-500 mt-1 flex-shrink-0" />
                             {cause}
                           </li>
@@ -353,12 +349,12 @@ export default function DiagnosticsPage() {
 
                     {/* Symptoms */}
                     <div>
-                      <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <ListChecks className="w-3.5 h-3.5" /> Symptoms
+                      <h4 className="text-[9px] sm:text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <ListChecks className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Symptoms
                       </h4>
-                      <ul className="space-y-1.5">
+                      <ul className="space-y-1">
                         {code.symptoms.map((symptom, i) => (
-                          <li key={i} className="text-sm text-surface-300 flex items-start gap-2">
+                          <li key={i} className="text-[11px] sm:text-sm text-surface-300 flex items-start gap-2">
                             <ArrowRight className="w-3 h-3 text-surface-500 mt-1 flex-shrink-0" />
                             {symptom}
                           </li>
@@ -368,22 +364,22 @@ export default function DiagnosticsPage() {
 
                     {/* Solutions */}
                     <div>
-                      <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Wrench className="w-3.5 h-3.5" /> Recommended Solutions
+                      <h4 className="text-[9px] sm:text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Wrench className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Recommended Solutions
                       </h4>
-                      <ul className="space-y-1.5">
+                      <ul className="space-y-1">
                         {code.solutions.map((solution, i) => (
-                          <li key={i} className="text-sm text-surface-300 flex items-start gap-2">
-                            <span className="text-brand-400 font-bold text-xs mt-0.5">{i + 1}.</span>
+                          <li key={i} className="text-[11px] sm:text-sm text-surface-300 flex items-start gap-2">
+                            <span className="text-brand-400 font-bold text-[10px] mt-0.5">{i + 1}.</span>
                             {solution}
                           </li>
                         ))}
                       </ul>
                       {code.estimatedCost && (
                         <div className="mt-3 p-2 rounded-lg bg-surface-800/50 flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-success" />
-                          <span className="text-sm text-surface-300">
-                            Estimated: <span className="text-white font-medium">${code.estimatedCost.min} - ${code.estimatedCost.max}</span>
+                          <DollarSign className="w-3.5 h-3.5 text-success" />
+                          <span className="text-[11px] sm:text-sm text-surface-300">
+                            Est: <span className="text-white font-medium">${code.estimatedCost.min} - ${code.estimatedCost.max}</span>
                           </span>
                         </div>
                       )}

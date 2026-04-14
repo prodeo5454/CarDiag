@@ -44,32 +44,34 @@ export default function LiveDataPage() {
     value >= pid.min && value <= pid.max;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Live Data</h1>
-          <p className="text-surface-400 text-sm mt-1">Real-time OBD-II sensor monitoring</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Live Data</h1>
+          <p className="text-surface-400 text-xs sm:text-sm mt-1">Real-time OBD-II sensor monitoring</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {isConnected && (
-            <button className="btn-secondary flex items-center gap-2 text-sm" disabled={!isPolling}>
-              <RefreshCw className={cn('w-4 h-4', isPolling && 'animate-spin')} /> Refresh
+            <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2" disabled={!isPolling}>
+              <RefreshCw className={cn('w-3.5 h-3.5 sm:w-4 h-4', isPolling && 'animate-spin')} />
+              <span className="hidden xs:inline">Refresh</span>
             </button>
           )}
-          <button className="btn-secondary flex items-center gap-2 text-sm" disabled={!isPolling}>
-            <Download className="w-4 h-4" /> Record
+          <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2" disabled={!isPolling}>
+            <Download className="w-3.5 h-3.5 sm:w-4 h-4" />
+            <span className="hidden xs:inline">Record</span>
           </button>
           {isConnected ? (
             <button
               onClick={() => isPolling ? stopPolling() : startPolling()}
-              className={cn('flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-xl transition-all', isPolling ? 'btn-danger' : 'btn-primary')}
+              className={cn('flex items-center gap-2 text-xs sm:text-sm font-medium px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl transition-all', isPolling ? 'btn-danger' : 'btn-primary')}
             >
-              {isPolling ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" /> Resume</>}
+              {isPolling ? <><Pause className="w-3.5 h-3.5 sm:w-4 h-4" /> Pause</> : <><Play className="w-3.5 h-3.5 sm:w-4 h-4" /> Resume</>}
             </button>
           ) : (
-            <Link href="/connection" className="btn-primary flex items-center gap-2 text-sm">
-              <Plug className="w-4 h-4" /> Connect Adapter
+            <Link href="/connection" className="btn-primary flex items-center gap-2 text-xs sm:text-sm px-4 py-2 sm:px-5 sm:py-2.5">
+              <Plug className="w-3.5 h-3.5 sm:w-4 h-4" /> Connect
             </Link>
           )}
         </div>
@@ -77,14 +79,14 @@ export default function LiveDataPage() {
 
       {/* Connection Banner */}
       {!isConnected && (
-        <div className="glass-card p-8 text-center border-l-4 border-l-brand-500">
-          <Plug className="w-12 h-12 text-surface-600 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-white mb-2">Connect to Your Vehicle</h3>
-          <p className="text-surface-400 text-sm max-w-md mx-auto mb-4">
+        <div className="glass-card p-6 sm:p-8 text-center border-l-4 border-l-brand-500">
+          <Plug className="w-10 h-10 sm:w-12 h-12 text-surface-600 mx-auto mb-3" />
+          <h3 className="text-base sm:text-lg font-medium text-white mb-2">Connect to Your Vehicle</h3>
+          <p className="text-surface-400 text-xs sm:text-sm max-w-md mx-auto mb-4">
             Connect your OBD-II adapter to view real-time sensor data from the vehicle ECU.
           </p>
-          <Link href="/connection" className="btn-primary inline-flex items-center gap-2 text-sm">
-            <Plug className="w-4 h-4" /> Go to Connection
+          <Link href="/connection" className="btn-primary inline-flex items-center gap-2 text-xs sm:text-sm">
+            <Plug className="w-3.5 h-3.5 sm:w-4 h-4" /> Go to Connection
           </Link>
         </div>
       )}
@@ -92,37 +94,39 @@ export default function LiveDataPage() {
       {isConnected && (
         <>
           {/* Category Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={cn('px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap',
+                className={cn('px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap',
                   selectedCategory === cat ? 'bg-brand-600/15 text-brand-400 border border-brand-500/20' : 'text-surface-400 hover:text-white hover:bg-surface-800/50 border border-transparent'
                 )}
               >
-                {cat === 'All' ? 'All Sensors' : cat} ({cat === 'All' ? supportedPIDs.length : supportedPIDs.filter(p => p.category === cat).length})
+                {cat === 'All' ? 'All Sensors' : cat} <span className="opacity-60">({cat === 'All' ? supportedPIDs.length : supportedPIDs.filter(p => p.category === cat).length})</span>
               </button>
             ))}
           </div>
 
           {/* Status Bar */}
-          <div className="glass-card px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-4 text-xs text-surface-400">
+          <div className="glass-card px-3 py-2 sm:px-4 sm:py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-surface-400">
               <span className="flex items-center gap-1.5">
-                <span className={cn('w-2 h-2 rounded-full', isPolling ? 'bg-success animate-pulse' : 'bg-surface-500')} />
+                <span className={cn('w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full', isPolling ? 'bg-success animate-pulse' : 'bg-surface-500')} />
                 {isPolling ? 'Streaming' : 'Paused'}
               </span>
-              <span>Refresh: 1s</span>
-              <span>Protocol: {connectionState.protocol ? connectionState.protocol.replace(/_/g, ' ') : 'Unknown'}</span>
+              <span>1.0s</span>
+              <span className="truncate max-w-[100px] sm:max-w-none">
+                {connectionState.protocol ? connectionState.protocol.replace(/_/g, ' ') : 'Unknown'}
+              </span>
             </div>
-            <span className="text-xs text-surface-500">{filtered.length} sensors displayed</span>
+            <span className="text-[10px] sm:text-xs text-surface-500">{filtered.length} sensors</span>
           </div>
         </>
       )}
 
       {isConnected && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {filtered.map(pid => {
             const reading = liveReadings.get(pid.pid);
             const value = reading?.value ?? null;
@@ -134,37 +138,37 @@ export default function LiveDataPage() {
               <div
                 key={pid.pid}
                 className={cn(
-                  'glass-card-hover p-4 cursor-pointer transition-all',
+                  'glass-card-hover p-3 sm:p-4 cursor-pointer transition-all',
                   isExpanded && 'col-span-1 md:col-span-2 xl:col-span-3 glow-brand',
                   !inRange && 'border-warning/30'
                 )}
                 onClick={() => setExpandedSensor(isExpanded ? null : pid.pid)}
               >
                 {/* Sensor Header */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Activity className={cn('w-4 h-4 flex-shrink-0', inRange ? 'text-brand-400' : 'text-warning')} />
-                    <span className="text-sm font-medium text-white truncate">{pid.name}</span>
+                    <Activity className={cn('w-3.5 h-3.5 sm:w-4 h-4 flex-shrink-0', inRange ? 'text-brand-400' : 'text-warning')} />
+                    <span className="text-xs sm:text-sm font-medium text-white truncate">{pid.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={cn('text-xs px-2 py-0.5 rounded-full', pid.category === 'Engine' ? 'bg-brand-500/10 text-brand-400' : pid.category === 'Fuel' ? 'bg-warning/10 text-warning' : 'bg-surface-700/50 text-surface-400')}>
+                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', pid.category === 'Engine' ? 'bg-brand-500/10 text-brand-400' : pid.category === 'Fuel' ? 'bg-warning/10 text-warning' : 'bg-surface-700/50 text-surface-400')}>
                       {pid.category}
                     </span>
-                    <Maximize2 className="w-3.5 h-3.5 text-surface-500" />
+                    <Maximize2 className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-surface-500" />
                   </div>
                 </div>
 
                 {/* Value */}
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={cn('text-3xl font-bold font-mono', inRange ? 'text-white' : 'text-warning')}>
+                <div className="flex items-baseline gap-1.5 mb-1">
+                  <span className={cn('text-2xl sm:text-3xl font-bold font-mono', inRange ? 'text-white' : 'text-warning')}>
                     {value !== null ? value.toFixed(pid.unit === 'RPM' || pid.unit === 'kPa' ? 0 : 1) : '--'}
                   </span>
-                  <span className="text-surface-400 text-sm">{pid.unit}</span>
+                  <span className="text-surface-400 text-xs sm:text-sm">{pid.unit}</span>
                 </div>
 
                 {/* Range bar */}
-                <div className="mb-3">
-                  <div className="relative h-1.5 bg-surface-800 rounded-full overflow-hidden">
+                <div className="mb-2 sm:mb-3">
+                  <div className="relative h-1 sm:h-1.5 bg-surface-800 rounded-full overflow-hidden">
                     {value !== null && (
                       <div
                         className={cn('absolute h-full rounded-full transition-all duration-500', inRange ? 'bg-brand-500' : 'bg-warning')}
@@ -172,17 +176,17 @@ export default function LiveDataPage() {
                       />
                     )}
                   </div>
-                  <div className="flex justify-between text-[10px] text-surface-500 mt-0.5">
+                  <div className="flex justify-between text-[9px] sm:text-[10px] text-surface-500 mt-0.5">
                     <span>{pid.min}{pid.unit}</span>
                     <span className={cn(inRange ? 'text-success' : 'text-warning')}>
-                      Normal: {pid.min}-{pid.max}
+                      {pid.min}-{pid.max}
                     </span>
                     <span>{pid.max}{pid.unit}</span>
                   </div>
                 </div>
 
                 {/* Mini Chart */}
-                <div className={cn('transition-all', isExpanded ? 'h-64' : 'h-16')}>
+                <div className={cn('transition-all', isExpanded ? 'h-48 sm:h-64' : 'h-12 sm:h-16')}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       {isExpanded && (

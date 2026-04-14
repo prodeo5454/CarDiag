@@ -193,7 +193,7 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
       {!isOnline && (
         <div className="fixed bottom-4 left-4 right-4 z-50 bg-red-500 text-white p-3 rounded-lg shadow-lg flex items-center space-x-3">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium">You're offline - Some features may be limited</span>
+          <span className="text-sm font-medium">You&apos;re offline — some features may be limited</span>
         </div>
       )}
 

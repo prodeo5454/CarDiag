@@ -16,6 +16,8 @@ import {
   PROTOCOL_MAP,
 } from './elm327';
 import { parseSupportedPIDs, parseDTCCodes, STANDARD_PIDS, PID_SUPPORT_COMMANDS } from './pids';
+import { BLE_SERVICES, BLE_WRITE_CHARS, BLE_NOTIFY_CHARS } from './ble-constants';
+import { ensureNativeBleInitialized, isCapacitorNativeHost } from './native-ble-platform';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,24 +36,15 @@ export interface ECULiveReading {
   timestamp: number;
 }
 
+/** Loose shape for @capacitor-community/bluetooth-le getServices() (avoids tight coupling to plugin types). */
+type NativeBleServiceShape = {
+  uuid: string;
+  characteristics?: { uuid: string; properties?: Record<string, boolean> }[];
+};
+
 // ─── Baud rates to attempt for ELM327 adapters ─────────────────────────────
 
 const BAUD_RATES = [38400, 115200, 9600, 57600, 19200, 230400, 500000];
-
-// Common BLE service/characteristic UUIDs used by OBD adapters
-const BLE_SERVICES = [
-  '0000fff0-0000-1000-8000-00805f9b34fb',
-  '0000ffe0-0000-1000-8000-00805f9b34fb',
-  '00001101-0000-1000-8000-00805f9b34fb',
-];
-const BLE_WRITE_CHARS = [
-  '0000fff2-0000-1000-8000-00805f9b34fb',
-  '0000ffe1-0000-1000-8000-00805f9b34fb',
-];
-const BLE_NOTIFY_CHARS = [
-  '0000fff1-0000-1000-8000-00805f9b34fb',
-  '0000ffe1-0000-1000-8000-00805f9b34fb',
-];
 
 // ─── Real OBD-II Connection Manager ─────────────────────────────────────────
 
@@ -79,6 +72,14 @@ export class OBDConnectionManager {
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private btWriteChar: any = null;
   private wifiSocket: WebSocket | null = null;
+
+  /** Capacitor @capacitor-community/bluetooth-le transport (Android / iOS shell). */
+  private nativeBle: {
+    deviceId: string;
+    service: string;
+    write: string;
+    notify: string;
+  } | null = null;
 
   private readBuffer = '';
   private readResolve: ((value: string) => void) | null = null;
@@ -122,9 +123,60 @@ export class OBDConnectionManager {
     this.emit({ type: 'data', timestamp: Date.now(), message: 'Scanning for Bluetooth OBD adapters...' });
     const adapters: OBDAdapter[] = [];
 
+    const optionalServices = [...BLE_SERVICES];
+
+    if (await isCapacitorNativeHost()) {
+      try {
+        await ensureNativeBleInitialized();
+        const { BleClient } = await import('@capacitor-community/bluetooth-le');
+        const namePrefixes = [
+          'OBD', 'ELM', 'OBDII', 'V-LINK', 'Vgate', 'iCar', 'Veepeak', 'LELink',
+          'BAFX', 'Konnwei', 'Carista', 'BlueDriver',
+        ];
+        for (const namePrefix of namePrefixes) {
+          try {
+            const device = await BleClient.requestDevice({ namePrefix, optionalServices });
+            adapters.push({
+              id: device.deviceId,
+              name: device.name || 'Bluetooth OBD Adapter',
+              type: 'bluetooth',
+              address: device.deviceId,
+              paired: true,
+              chipset: 'ELM327',
+            });
+            break;
+          } catch {
+            /* try next prefix */
+          }
+        }
+        if (adapters.length === 0) {
+          try {
+            const device = await BleClient.requestDevice({ optionalServices });
+            adapters.push({
+              id: device.deviceId,
+              name: device.name || 'Bluetooth OBD Adapter',
+              type: 'bluetooth',
+              address: device.deviceId,
+              paired: true,
+              chipset: 'ELM327',
+            });
+          } catch (err: any) {
+            if (err?.message) {
+              this.emit({ type: 'error', timestamp: Date.now(), message: `Bluetooth: ${err.message}` });
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('[OBD] Native BLE scan error:', err);
+        this.emit({ type: 'error', timestamp: Date.now(), message: `Bluetooth: ${err?.message || err}` });
+      }
+      this.state.status = 'disconnected';
+      return adapters;
+    }
+
     if (!('bluetooth' in navigator)) {
       this.state.status = 'disconnected';
-      throw new Error('Web Bluetooth not available. Use Chrome/Edge on desktop or Android.');
+      throw new Error('Web Bluetooth not available. Use Chrome/Edge on desktop, or install the Android app for native BLE.');
     }
 
     try {
@@ -144,7 +196,7 @@ export class OBDConnectionManager {
           { namePrefix: 'Carista' },
           { namePrefix: 'BlueDriver' },
         ],
-        optionalServices: BLE_SERVICES,
+        optionalServices,
       });
 
       if (device) {
@@ -444,6 +496,10 @@ export class OBDConnectionManager {
   private async openBluetoothTransport(adapter: OBDAdapter): Promise<boolean> {
     this.addInitStep('Connecting via Bluetooth...');
 
+    if (await isCapacitorNativeHost()) {
+      return this.openNativeBluetoothTransport(adapter);
+    }
+
     if (!('bluetooth' in navigator)) throw new Error('Web Bluetooth not supported');
 
     const nav = navigator as any;
@@ -504,6 +560,85 @@ export class OBDConnectionManager {
     this.btWriteChar = writeChar;
     this.updateInitStep('Bluetooth connected');
     return true;
+  }
+
+  private async openNativeBluetoothTransport(adapter: OBDAdapter): Promise<boolean> {
+    await ensureNativeBleInitialized();
+    const { BleClient } = await import('@capacitor-community/bluetooth-le');
+    const deviceId = adapter.id;
+
+    await BleClient.connect(deviceId, () => {
+      this.connected = false;
+      this.emit({ type: 'disconnected', timestamp: Date.now(), message: 'Bluetooth device disconnected' });
+    });
+
+    const services = await BleClient.getServices(deviceId);
+    const picked = this.pickObdBleCharacteristics(services as unknown as NativeBleServiceShape[]);
+    if (!picked) {
+      try {
+        await BleClient.disconnect(deviceId);
+      } catch {}
+      throw new Error('Could not find OBD GATT characteristics. Adapter may not be BLE-compatible.');
+    }
+
+    await BleClient.startNotifications(deviceId, picked.service, picked.notify, (value: DataView) => {
+      const text = new TextDecoder().decode(value);
+      this.readBuffer += text;
+      if (this.readBuffer.includes('>') && this.readResolve) {
+        this.readResolve(this.readBuffer);
+        this.readResolve = null;
+      }
+    });
+
+    this.nativeBle = {
+      deviceId,
+      service: picked.service,
+      write: picked.write,
+      notify: picked.notify,
+    };
+    this.btWriteChar = null;
+    this.updateInitStep('Bluetooth connected (native)');
+    return true;
+  }
+
+  private pickObdBleCharacteristics(services: NativeBleServiceShape[]): {
+    service: string;
+    write: string;
+    notify: string;
+  } | null {
+    const nu = (u: string) => u.toLowerCase();
+
+    const writeSet = new Set(BLE_WRITE_CHARS.map((u) => nu(u)));
+    const notifySet = new Set(BLE_NOTIFY_CHARS.map((u) => nu(u)));
+
+    for (const svc of services) {
+      const chars = svc.characteristics;
+      if (!chars?.length) continue;
+      let write: string | null = null;
+      let notify: string | null = null;
+      for (const c of chars) {
+        const cu = nu(c.uuid);
+        const p = c.properties || {};
+        if (writeSet.has(cu)) write = c.uuid;
+        if (notifySet.has(cu) && (p.notify || p.indicate)) notify = c.uuid;
+      }
+      if (write && notify) return { service: svc.uuid, write, notify };
+    }
+
+    for (const svc of services) {
+      const chars = svc.characteristics;
+      if (!chars?.length) continue;
+      let write: string | null = null;
+      let notify: string | null = null;
+      for (const c of chars) {
+        const p = c.properties || {};
+        if ((p.write || p.writeWithoutResponse) && !write) write = c.uuid;
+        if (p.notify && !notify) notify = c.uuid;
+      }
+      if (write && notify) return { service: svc.uuid, write, notify };
+    }
+
+    return null;
   }
 
   // ─── WiFi Transport (WebSocket / TCP) ─────────────────────────────────
@@ -570,6 +705,18 @@ export class OBDConnectionManager {
 
     if (this.writer) {
       await this.writer.write(encoded);
+    } else if (this.nativeBle) {
+      const { BleClient } = await import('@capacitor-community/bluetooth-le');
+      const m = this.nativeBle;
+      for (let i = 0; i < encoded.length; i += 20) {
+        const chunk = encoded.slice(i, i + 20);
+        const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+        try {
+          await BleClient.writeWithoutResponse(m.deviceId, m.service, m.write, view);
+        } catch {
+          await BleClient.write(m.deviceId, m.service, m.write, view);
+        }
+      }
     } else if (this.btWriteChar) {
       // BLE has MTU limits, chunk at 20 bytes
       for (let i = 0; i < encoded.length; i += 20) {
@@ -937,6 +1084,15 @@ export class OBDConnectionManager {
   }
 
   private async closeTransport(): Promise<void> {
+    if (this.nativeBle) {
+      try {
+        const { BleClient } = await import('@capacitor-community/bluetooth-le');
+        const m = this.nativeBle;
+        await BleClient.stopNotifications(m.deviceId, m.service, m.notify);
+        await BleClient.disconnect(m.deviceId);
+      } catch {}
+      this.nativeBle = null;
+    }
     try { if (this.reader) { await this.reader.cancel(); this.reader.releaseLock(); } } catch {}
     try { if (this.writer) { await this.writer.close(); } } catch {}
     try { if (this.port?.readable || this.port?.writable) { await this.port.close(); } } catch {}

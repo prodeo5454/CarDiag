@@ -143,26 +143,26 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-surface-400 text-sm mt-1">Vehicle health overview and quick diagnostics</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {isConnected && connectionState.vin && (
-            <div className="glass-card px-4 py-2 flex items-center gap-2">
+            <div className="glass-card px-3 py-1.5 flex items-center gap-2">
               <Car className="w-4 h-4 text-brand-400" />
-              <span className="text-sm text-white font-medium font-mono">{connectionState.vin}</span>
+              <span className="text-xs sm:text-sm text-white font-medium font-mono">{connectionState.vin}</span>
             </div>
           )}
           {isConnected ? (
-            <button onClick={fetchECUData} disabled={scanning} className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50">
+            <button onClick={fetchECUData} disabled={scanning} className="btn-primary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5 disabled:opacity-50">
               {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-              {scanning ? 'Reading ECU...' : 'Refresh Data'}
+              {scanning ? 'Reading...' : 'Refresh'}
             </button>
           ) : (
-            <Link href="/connection" className="btn-primary flex items-center gap-2 text-sm">
-              <Plug className="w-4 h-4" /> Connect Adapter
+            <Link href="/connection" className="btn-primary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5">
+              <Plug className="w-4 h-4" /> Connect
             </Link>
           )}
         </div>
@@ -170,10 +170,10 @@ export default function DashboardPage() {
 
       {/* Not connected banner */}
       {!isConnected && (
-        <div className="glass-card p-8 text-center border-l-4 border-l-brand-500">
-          <Plug className="w-12 h-12 text-surface-600 mx-auto mb-3" />
-          <h3 className="text-lg font-medium text-white mb-2">Connect to Your Vehicle</h3>
-          <p className="text-surface-400 text-sm max-w-md mx-auto mb-4">
+        <div className="glass-card p-6 sm:p-8 text-center border-l-4 border-l-brand-500">
+          <Plug className="w-10 h-10 sm:w-12 sm:h-12 text-surface-600 mx-auto mb-3" />
+          <h3 className="text-base sm:text-lg font-medium text-white mb-2">Connect to Your Vehicle</h3>
+          <p className="text-surface-400 text-xs sm:text-sm max-w-md mx-auto mb-4">
             Plug your OBD-II adapter into the vehicle, then pair it on the Connection page to see real ECU data here.
           </p>
           <Link href="/connection" className="btn-primary inline-flex items-center gap-2 text-sm">
@@ -185,11 +185,11 @@ export default function DashboardPage() {
       {isConnected && (
         <>
           {/* Top Row: Health + Quick Stats */}
-          <div className="grid grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
             {/* Health Score */}
-            <div className={cn('col-span-4 glass-card p-6 flex flex-col items-center justify-center', healthGlow)}>
-              <p className="text-sm text-surface-400 mb-4 font-medium uppercase tracking-wider">Vehicle Health Score</p>
-              <div className="relative w-52 h-52">
+            <div className={cn('lg:col-span-4 glass-card p-4 sm:p-6 flex flex-col items-center justify-center', healthGlow)}>
+              <p className="text-xs sm:text-sm text-surface-400 mb-4 font-medium uppercase tracking-wider">Health Score</p>
+              <div className="relative w-40 h-40 sm:w-52 sm:h-52">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
                   <circle cx="100" cy="100" r="88" stroke="#1e293b" strokeWidth="10" fill="none" />
                   <circle
@@ -204,126 +204,109 @@ export default function DashboardPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={cn('text-5xl font-bold', healthColor)}>{healthScore}</span>
-                  <span className="text-surface-400 text-sm mt-1">out of 100</span>
+                  <span className={cn('text-4xl sm:text-5xl font-bold', healthColor)}>{healthScore}</span>
+                  <span className="text-surface-400 text-[10px] sm:text-sm mt-1">out of 100</span>
                 </div>
               </div>
               {connectionState.protocol && (
-                <p className="mt-3 text-xs text-surface-500">{PROTOCOL_NAMES[connectionState.protocol]}</p>
+                <p className="mt-3 text-[10px] sm:text-xs text-surface-500">{PROTOCOL_NAMES[connectionState.protocol]}</p>
               )}
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="col-span-8 grid grid-cols-2 gap-4">
+            <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Active Codes */}
-              <div className="stat-card">
+              <div className="stat-card p-3 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-surface-400 text-sm">Active DTCs</span>
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', activeDTCs.length > 0 ? 'bg-warning/10' : 'bg-success/10')}>
+                  <span className="text-surface-400 text-xs sm:text-sm">Active DTCs</span>
+                  <div className={cn('w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center', activeDTCs.length > 0 ? 'bg-warning/10' : 'bg-success/10')}>
                     {activeDTCs.length > 0 ? <AlertTriangle className="w-4 h-4 text-warning" /> : <CheckCircle2 className="w-4 h-4 text-success" />}
                   </div>
                 </div>
-                <span className="text-3xl font-bold text-white">{activeDTCs.length}</span>
-                <span className="text-xs text-surface-400">{activeDTCs.length === 0 ? 'No fault codes' : 'Read from ECU'}</span>
+                <span className="text-2xl sm:text-3xl font-bold text-white">{activeDTCs.length}</span>
+                <span className="text-[10px] sm:text-xs text-surface-400">{activeDTCs.length === 0 ? 'Clear' : 'Read from ECU'}</span>
               </div>
 
               {/* Pending Codes */}
-              <div className="stat-card">
+              <div className="stat-card p-3 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-surface-400 text-sm">Pending DTCs</span>
-                  <div className="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center">
+                  <span className="text-surface-400 text-xs sm:text-sm">Pending DTCs</span>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-info/10 flex items-center justify-center">
                     <Clock className="w-4 h-4 text-info" />
                   </div>
                 </div>
-                <span className="text-3xl font-bold text-white">{pendingDTCs.length}</span>
-                <span className="text-xs text-surface-400">{pendingDTCs.length === 0 ? 'None pending' : 'Awaiting drive cycle'}</span>
+                <span className="text-2xl sm:text-3xl font-bold text-white">{pendingDTCs.length}</span>
+                <span className="text-[10px] sm:text-xs text-surface-400">Drive cycle</span>
               </div>
 
               {/* MIL Status */}
-              <div className="stat-card">
+              <div className="stat-card p-3 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-surface-400 text-sm">MIL Status</span>
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', milOn ? 'bg-warning/10' : 'bg-success/10')}>
+                  <span className="text-surface-400 text-xs sm:text-sm">MIL Status</span>
+                  <div className={cn('w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center', milOn ? 'bg-warning/10' : 'bg-success/10')}>
                     {milOn ? <AlertTriangle className="w-4 h-4 text-warning" /> : <CheckCircle2 className="w-4 h-4 text-success" />}
                   </div>
                 </div>
-                <span className={cn('text-xl font-bold', milOn ? 'text-warning' : 'text-success')}>{milOn ? 'ON' : 'OFF'}</span>
-                <span className="text-xs text-surface-400">{milOn ? 'Check Engine Light Active' : 'No warning lights'}</span>
+                <span className={cn('text-lg sm:text-xl font-bold', milOn ? 'text-warning' : 'text-success')}>{milOn ? 'ON' : 'OFF'}</span>
+                <span className="text-[10px] sm:text-xs text-surface-400">Check Engine</span>
               </div>
 
               {/* Readiness */}
-              <div className="stat-card">
+              <div className="stat-card p-3 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-surface-400 text-sm">I/M Readiness</span>
-                  <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                  <span className="text-surface-400 text-xs sm:text-sm">Readiness</span>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-success" />
                   </div>
                 </div>
-                <span className="text-3xl font-bold text-white">{readyCount}/{totalMonitors}</span>
-                <span className="text-xs text-surface-400">Monitors complete</span>
+                <span className="text-2xl sm:text-3xl font-bold text-white">{readyCount}/{totalMonitors}</span>
+                <span className="text-[10px] sm:text-xs text-surface-400">Complete</span>
               </div>
 
               {/* Coolant Temp */}
-              <div className="stat-card">
+              <div className="stat-card p-3 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-surface-400 text-sm">Coolant Temp</span>
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', coolantTemp !== null && coolantTemp <= 110 ? 'bg-success/10' : 'bg-warning/10')}>
+                  <span className="text-surface-400 text-xs sm:text-sm">Coolant</span>
+                  <div className={cn('w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center', coolantTemp !== null && coolantTemp <= 110 ? 'bg-success/10' : 'bg-warning/10')}>
                     <Thermometer className={cn('w-4 h-4', coolantTemp !== null && coolantTemp <= 110 ? 'text-success' : 'text-warning')} />
                   </div>
                 </div>
-                <span className="text-3xl font-bold text-white">{coolantTemp !== null ? `${Math.round(coolantTemp)}°C` : '--'}</span>
-                <span className={cn('text-xs', coolantTemp !== null && coolantTemp >= 80 && coolantTemp <= 105 ? 'text-success' : 'text-surface-400')}>
-                  {coolantTemp !== null ? (coolantTemp >= 80 && coolantTemp <= 105 ? 'Normal operating range' : 'Outside normal range') : 'Not read yet'}
+                <span className="text-2xl sm:text-3xl font-bold text-white">{coolantTemp !== null ? `${Math.round(coolantTemp)}°C` : '--'}</span>
+                <span className={cn('text-[10px] sm:text-xs', coolantTemp !== null && coolantTemp >= 80 && coolantTemp <= 105 ? 'text-success' : 'text-surface-400')}>
+                  {coolantTemp !== null ? (coolantTemp >= 80 && coolantTemp <= 105 ? 'Normal' : 'High') : 'No data'}
                 </span>
               </div>
 
               {/* Engine RPM */}
-              <div className="stat-card">
+              <div className="stat-card p-3 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-surface-400 text-sm">Engine RPM</span>
-                  <div className="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center">
+                  <span className="text-surface-400 text-xs sm:text-sm">RPM</span>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-500/10 flex items-center justify-center">
                     <Gauge className="w-4 h-4 text-brand-400" />
                   </div>
                 </div>
-                <span className="text-3xl font-bold text-white">{rpm !== null ? Math.round(rpm) : '--'}</span>
-                <span className="text-xs text-surface-400">
-                  {rpm !== null ? (rpm < 900 ? 'Idle' : rpm < 3000 ? 'Normal' : 'High') : 'Not read yet'}
+                <span className="text-2xl sm:text-3xl font-bold text-white">{rpm !== null ? Math.round(rpm) : '--'}</span>
+                <span className="text-[10px] sm:text-xs text-surface-400">
+                  {rpm !== null ? (rpm < 900 ? 'Idle' : 'Live') : 'No data'}
                 </span>
               </div>
             </div>
           </div>
 
           {/* Bottom Row: Connection Info + DTCs + Readiness */}
-          <div className="grid grid-cols-12 gap-6">
-            {/* Connection Info */}
-            <div className="col-span-4 glass-card p-5">
-              <h2 className="section-title mb-4">Connection Info</h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-surface-500">Adapter</span><span className="text-surface-300">{connectionState.adapter?.name || '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">Type</span><span className="text-surface-300">{connectionState.adapter?.type?.toUpperCase() || '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">Chipset</span><span className="text-surface-300">{connectionState.adapter?.chipset || '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">Protocol</span><span className="text-brand-400">{connectionState.protocol ? PROTOCOL_NAMES[connectionState.protocol] : '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">Battery</span><span className="text-surface-300">{connectionState.voltage || '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">VIN</span><span className="text-surface-300 font-mono text-xs">{connectionState.vin || '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">ECU Addresses</span><span className="text-surface-300 font-mono text-xs">{connectionState.ecuAddresses.join(', ') || '--'}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">Supported PIDs</span><span className="text-surface-300">{connectionState.supportedPIDs.length}</span></div>
-                <div className="flex justify-between"><span className="text-surface-500">Latency</span><span className="text-surface-300">{connectionState.latency}ms</span></div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
             {/* Trouble Codes from ECU */}
-            <div className="col-span-5 glass-card p-5">
+            <div className="lg:col-span-5 order-1 lg:order-2 glass-card p-4 sm:p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="section-title">Trouble Codes (ECU)</h2>
+                <h2 className="section-title">Trouble Codes</h2>
                 <Link href="/diagnostics" className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
                   Details <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>
               {dtcDetails.length === 0 && pendingDTCs.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-2" />
+                <div className="text-center py-6 sm:py-8">
+                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-success mx-auto mb-2" />
                   <p className="text-sm text-surface-300">No trouble codes found</p>
-                  <p className="text-xs text-surface-500">Vehicle ECU reports no faults</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -331,56 +314,49 @@ export default function DashboardPage() {
                     <div key={dtc.code} className="p-3 rounded-xl bg-surface-800/50 border border-surface-700/30">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={cn('badge', dtc.severity === 'critical' ? 'badge-critical' : 'badge-warning')}>{dtc.code}</span>
-                        <span className="text-xs text-surface-400">stored</span>
                       </div>
-                      <p className="text-sm text-surface-300">{dtc.desc}</p>
+                      <p className="text-xs sm:text-sm text-surface-300 line-clamp-2">{dtc.desc}</p>
                     </div>
                   ))}
-                  {pendingDTCs.map((code) => {
-                    const lookup = searchDTCByCode(code);
-                    return (
-                      <div key={code} className="p-3 rounded-xl bg-surface-800/50 border border-surface-700/30">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="badge badge-pending">{code}</span>
-                          <span className="text-xs text-surface-400">pending</span>
-                        </div>
-                        <p className="text-sm text-surface-300">{lookup?.description || 'Unknown DTC'}</p>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>
 
             {/* I/M Readiness from ECU */}
-            <div className="col-span-3 glass-card p-5">
+            <div className="lg:col-span-3 order-2 lg:order-3 glass-card p-4 sm:p-5">
               <h2 className="section-title mb-4">I/M Readiness</h2>
               {readiness.length === 0 ? (
-                <p className="text-sm text-surface-500 text-center py-6">Click Refresh to read monitors from ECU</p>
+                <p className="text-xs sm:text-sm text-surface-500 text-center py-6">Refresh to read monitors</p>
               ) : (
                 <>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-x-4 gap-y-1">
                     {readiness.map((mon) => (
-                      <div key={mon.name} className="flex items-center justify-between py-1.5">
-                        <span className="text-sm text-surface-300">{mon.name}</span>
+                      <div key={mon.name} className="flex items-center justify-between py-1.5 border-b border-surface-800/50 last:border-0">
+                        <span className="text-xs text-surface-300 truncate mr-2">{mon.name}</span>
                         {!mon.available ? (
-                          <span className="badge-pending text-[10px]">N/A</span>
+                          <span className="badge-pending text-[9px] px-1.5">N/A</span>
                         ) : mon.complete ? (
-                          <span className="badge-success text-[10px]">READY</span>
+                          <span className="badge-success text-[9px] px-1.5">READY</span>
                         ) : (
-                          <span className="badge-warning text-[10px]">INC</span>
+                          <span className="badge-warning text-[9px] px-1.5">INC</span>
                         )}
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-surface-700/50">
-                    <p className="text-xs text-surface-400">
-                      <span className="text-success font-medium">{readyCount}</span> ready &bull;
-                      <span className="text-warning font-medium ml-1">{incompleteCount}</span> incomplete
-                    </p>
-                  </div>
                 </>
               )}
+            </div>
+
+            {/* Connection Info */}
+            <div className="lg:col-span-4 order-3 lg:order-1 glass-card p-4 sm:p-5">
+              <h2 className="section-title mb-4">Connection Info</h2>
+              <div className="space-y-2 text-xs sm:text-sm">
+                <div className="flex justify-between"><span className="text-surface-500">Adapter</span><span className="text-surface-300">{connectionState.adapter?.name || '--'}</span></div>
+                <div className="flex justify-between"><span className="text-surface-500">Protocol</span><span className="text-brand-400 text-[10px] sm:text-xs text-right max-w-[150px] truncate">{connectionState.protocol ? PROTOCOL_NAMES[connectionState.protocol] : '--'}</span></div>
+                <div className="flex justify-between"><span className="text-surface-500">Voltage</span><span className="text-surface-300">{connectionState.voltage || '--'}</span></div>
+                <div className="flex justify-between"><span className="text-surface-500">VIN</span><span className="text-surface-300 font-mono text-[10px]">{connectionState.vin || '--'}</span></div>
+                <div className="flex justify-between"><span className="text-surface-500">Latency</span><span className="text-surface-300">{connectionState.latency}ms</span></div>
+              </div>
             </div>
           </div>
         </>

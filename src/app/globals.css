@@ -34,7 +34,7 @@
 
 @layer components {
   .glass-card {
-    @apply bg-surface-900/80 backdrop-blur-xl border border-surface-700/50 rounded-2xl;
+    @apply bg-surface-900 border border-surface-700/50 rounded-2xl;
   }
 
   .glass-card-hover {
