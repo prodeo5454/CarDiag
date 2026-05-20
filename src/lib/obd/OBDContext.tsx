@@ -12,6 +12,7 @@ import {
   LAST_ADAPTER_KEY,
 } from '@/lib/preferences';
 import { getAdapterById, rememberAdapter, rememberAdapters } from '@/lib/adapter-history';
+import { toast } from 'sonner';
 
 // ─── Context Types ──────────────────────────────────────────────────────────
 
@@ -101,10 +102,17 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         const ok = await manager.connect(adapter);
         if (!cancelled) {
           setConnectionState(manager.getState());
-          if (ok) setLastError(null);
+          if (ok) {
+            setLastError(null);
+            toast.success(`Connected to ${adapter.name}`);
+          } else {
+            toast.error(`Could not connect to ${adapter.name}`);
+          }
         }
       } catch {
-        /* last adapter unavailable */
+        if (!cancelled) {
+          toast.error('Auto-connect failed — open Connection to scan again');
+        }
       }
     })();
 

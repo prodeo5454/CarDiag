@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useOBD } from '@/lib/obd/OBDContext';
 import { MaintenanceTracker, type MaintenanceSchedule } from '@/lib/obd/maintenance-tracker';
+import { STANDARD_PIDS } from '@/lib/obd/pids';
 import { VehicleManager } from '@/lib/vehicle-manager';
 
 type TaskStatus = 'ok' | 'due-soon' | 'overdue';
@@ -46,9 +47,12 @@ function getScheduleStatus(schedule: MaintenanceSchedule, currentMileage: number
   return 'ok';
 }
 
+const DISTANCE_SINCE_CLEAR_PID = STANDARD_PIDS.find((p) => p.pid === '31' && p.mode === '01');
+
 export default function MaintenancePage() {
-  const { connectionState } = useOBD();
+  const { connectionState, readPIDValue } = useOBD();
   const isConnected = connectionState.status === 'connected';
+  const [syncingMileage, setSyncingMileage] = useState(false);
 
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | TaskStatus>('all');
@@ -134,6 +138,35 @@ export default function MaintenancePage() {
     return Math.min(100, (milesDone / schedule.intervalMiles) * 100);
   };
 
+  const syncDistanceFromEcu = useCallback(async () => {
+    if (!isConnected || !activeVehicle || !DISTANCE_SINCE_CLEAR_PID) {
+      toast.error('Connect OBD and select a vehicle first');
+      return;
+    }
+    setSyncingMileage(true);
+    try {
+      const reading = await readPIDValue(DISTANCE_SINCE_CLEAR_PID);
+      if (!reading || reading.value == null) {
+        toast.error('ECU did not return distance PID (0x31)');
+        return;
+      }
+      const kmSinceClear = Math.round(reading.value);
+      const updated = VehicleManager.updateVehicle(activeVehicle.id, {
+        currentMileage: activeVehicle.currentMileage + kmSinceClear,
+      });
+      if (updated) {
+        toast.success(
+          `Added ${kmSinceClear} km since last clear to odometer (now ${updated.currentMileage.toLocaleString()} km)`
+        );
+        loadSchedules();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not read distance from ECU');
+    } finally {
+      setSyncingMileage(false);
+    }
+  }, [isConnected, activeVehicle, readPIDValue, loadSchedules]);
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -144,7 +177,19 @@ export default function MaintenancePage() {
             {activeVehicle ? ` — ${activeVehicle.name}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {isConnected && activeVehicle && (
+            <button
+              type="button"
+              onClick={() => void syncDistanceFromEcu()}
+              disabled={syncingMileage}
+              className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2 disabled:opacity-50"
+              title="Uses PID 0x31 distance since codes cleared — adds to vehicle mileage"
+            >
+              <Gauge className={cn('w-3.5 h-3.5 sm:w-4 h-4', syncingMileage && 'animate-pulse')} />
+              {syncingMileage ? 'Reading…' : 'Sync distance'}
+            </button>
+          )}
           {!isConnected && (
             <Link href="/connection" className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2">
               <Plug className="w-3.5 h-3.5 sm:w-4 h-4" /> <span>Connect</span>

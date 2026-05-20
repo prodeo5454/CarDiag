@@ -99,7 +99,7 @@ Output: `android/app/build/outputs/bundle/release/app-release.aab`
 ### 4. Play Console checklist
 
 - **Package name:** `com.cardiag.app` (must match `applicationId`)
-- **Version:** `versionName` / `versionCode` in `android/app/build.gradle` (currently **2.0.0** / **3**)
+- **Version:** `versionName` / `versionCode` in `android/app/build.gradle` (currently **2.0.3** / **6**)
 - **Permissions:** Bluetooth — declare OBD adapter use in the store listing
 - **Privacy policy:** Required if you collect any data; app is mostly local-first
 - **Screenshots:** Dashboard, Diagnostics, Live Data, Programming, Connection

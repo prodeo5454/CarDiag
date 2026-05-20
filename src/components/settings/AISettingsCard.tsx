@@ -47,7 +47,7 @@ export default function AISettingsCard({ onChange }: { onChange?: () => void }) 
             value={aiConfig.apiKey}
             onChange={(e) => update({ apiKey: e.target.value })}
             placeholder="sk-..."
-            className="w-full px-3 py-2 bg-surface-800 border border-surface-700/30 rounded-lg text-white"
+            className="input-field w-full text-sm"
           />
         </div>
         <div>
@@ -56,7 +56,7 @@ export default function AISettingsCard({ onChange }: { onChange?: () => void }) 
             type="url"
             value={aiConfig.apiBaseUrl}
             onChange={(e) => update({ apiBaseUrl: e.target.value })}
-            className="w-full px-3 py-2 bg-surface-800 border border-surface-700/30 rounded-lg text-white"
+            className="input-field w-full text-sm"
           />
         </div>
         <div>
@@ -65,7 +65,7 @@ export default function AISettingsCard({ onChange }: { onChange?: () => void }) 
             type="text"
             value={aiConfig.model}
             onChange={(e) => update({ model: e.target.value })}
-            className="w-full px-3 py-2 bg-surface-800 border border-surface-700/30 rounded-lg text-white"
+            className="input-field w-full text-sm"
           />
         </div>
       </div>

@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.3] — 2026-05-20
+
+### Added
+
+- **OEM DTC lookups** use active vehicle make on Dashboard, Reports, and AI engine
+- **Maintenance → Sync distance** reads PID 0x31 (distance since clear) when connected
+- **Android cleartext** for Wi‑Fi OBD (`network_security_config` + manifest)
+- **Diagnostics toasts** on scan/clear success and failure
+
+### Changed
+
+- **Connection** on mobile: BLE/Wi‑Fi only (no USB / Scan All); auto-connect shows toast feedback
+- **Light theme** fixes for Settings AI inputs (`input-field`)
+- Reports link to **Advanced AI** analysis
+
 ## [2.0.2] — 2026-05-20
 
 ### Added

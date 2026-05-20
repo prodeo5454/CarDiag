@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
   Search,
   Scan,
@@ -100,7 +101,7 @@ export default function DiagnosticsPage() {
 
   const filteredCodes = useMemo(() => {
     let codes: (DTCCode & { tag?: string })[] = searchQuery.trim()
-      ? searchDTCByKeyword(searchQuery)
+      ? searchDTCByKeyword(searchQuery, vehicleMake)
       : scanComplete ? activeCodes : [];
 
     if (selectedCategory !== 'all') {
@@ -127,8 +128,11 @@ export default function DiagnosticsPage() {
       setPendingRaw(pending);
       setPermanentRaw(permanent);
       setScanComplete(true);
+      const total = stored.length + pending.length + permanent.length;
+      toast.success(total > 0 ? `Found ${total} code(s)` : 'Scan complete — no codes');
     } catch (err) {
       console.error('[Diagnostics] Scan error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to read DTCs from ECU');
     } finally {
       setScanning(false);
     }
@@ -161,10 +165,15 @@ export default function DiagnosticsPage() {
       if (ok) {
         setStoredRaw([]);
         setPendingRaw([]);
+        setPermanentRaw([]);
         setScanComplete(false);
+        toast.success('DTCs cleared');
+      } else {
+        toast.error('ECU did not confirm clear — try key on, engine off');
       }
     } catch (err) {
       console.error('[Diagnostics] Clear error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to clear DTCs');
     } finally {
       setClearing(false);
     }

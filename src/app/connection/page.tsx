@@ -67,6 +67,15 @@ export default function ConnectionPage() {
   }, []);
 
   const handleScan = async (type: ConnectionType | 'all') => {
+    if (isNativeApp && type === 'usb') {
+      toast.error('USB OBD adapters are not supported on mobile. Use Bluetooth LE.');
+      return;
+    }
+    if (isNativeApp && type === 'all') {
+      setScanType('bluetooth');
+      await scan('bluetooth');
+      return;
+    }
     setScanType(type);
     await scan(type);
   };
@@ -251,21 +260,35 @@ export default function ConnectionPage() {
         <>
           <div className="glass-card p-4 sm:p-5">
             <h3 className="section-title text-sm sm:text-base mb-1">Scan for Adapters</h3>
-            <p className="section-subtitle text-xs mb-4">Search on all connection types</p>
+            <p className="section-subtitle text-xs mb-4">
+              {isNativeApp
+                ? 'Scan for Bluetooth LE adapters (recommended on phone/tablet)'
+                : 'Search on all connection types'}
+            </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-              <button
-                onClick={() => handleScan('all')}
-                disabled={scanning}
-                className="btn-primary flex flex-col items-center gap-2 py-3 sm:py-4 text-xs sm:text-sm disabled:opacity-50"
-              >
-                {scanning && scanType === 'all' ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <Search className="w-5 h-5 sm:w-6 sm:h-6" />}
-                Scan All
-              </button>
+            <div
+              className={cn(
+                'grid gap-2 sm:gap-3',
+                isNativeApp ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'
+              )}
+            >
+              {!isNativeApp && (
+                <button
+                  onClick={() => handleScan('all')}
+                  disabled={scanning}
+                  className="btn-primary flex flex-col items-center gap-2 py-3 sm:py-4 text-xs sm:text-sm disabled:opacity-50"
+                >
+                  {scanning && scanType === 'all' ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <Search className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  Scan All
+                </button>
+              )}
               <button
                 onClick={() => handleScan('bluetooth')}
                 disabled={scanning}
-                className="btn-secondary flex flex-col items-center gap-2 py-3 sm:py-4 text-xs sm:text-sm disabled:opacity-50"
+                className={cn(
+                  'flex flex-col items-center gap-2 py-3 sm:py-4 text-xs sm:text-sm disabled:opacity-50',
+                  isNativeApp ? 'btn-primary' : 'btn-secondary'
+                )}
               >
                 {scanning && scanType === 'bluetooth' ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <Bluetooth className="w-5 h-5 sm:w-6 sm:h-6" />}
                 Bluetooth
@@ -278,14 +301,16 @@ export default function ConnectionPage() {
                 {scanning && scanType === 'wifi' ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <Wifi className="w-5 h-5 sm:w-6 sm:h-6" />}
                 WiFi
               </button>
-              <button
-                onClick={() => handleScan('usb')}
-                disabled={scanning}
-                className="btn-secondary flex flex-col items-center gap-2 py-3 sm:py-4 text-xs sm:text-sm disabled:opacity-50"
-              >
-                {scanning && scanType === 'usb' ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <Usb className="w-5 h-5 sm:w-6 sm:h-6" />}
-                USB
-              </button>
+              {!isNativeApp && (
+                <button
+                  onClick={() => handleScan('usb')}
+                  disabled={scanning}
+                  className="btn-secondary flex flex-col items-center gap-2 py-3 sm:py-4 text-xs sm:text-sm disabled:opacity-50"
+                >
+                  {scanning && scanType === 'usb' ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : <Usb className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  USB
+                </button>
+              )}
             </div>
           </div>
 

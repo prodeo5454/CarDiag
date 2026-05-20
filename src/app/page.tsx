@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useOBD } from '@/lib/obd/OBDContext';
 import { PROTOCOL_NAMES } from '@/lib/obd/elm327';
 import { searchDTCByCode } from '@/lib/dtc-database';
+import { VehicleManager } from '@/lib/vehicle-manager';
 
 export default function DashboardPage() {
   const {
@@ -136,8 +137,10 @@ export default function DashboardPage() {
   const incompleteCount = readiness.filter(m => m.available && !m.complete).length;
 
   // Look up DTC descriptions from the reference database
+  const vehicleMake = VehicleManager.getActiveVehicleMake();
+
   const dtcDetails = activeDTCs.map(code => {
-    const lookup = searchDTCByCode(code);
+    const lookup = searchDTCByCode(code, vehicleMake);
     return { code, desc: lookup?.description || 'Unknown DTC', severity: lookup?.severity || 'warning' };
   });
 

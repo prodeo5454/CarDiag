@@ -155,6 +155,11 @@ export class VehicleManager {
   }
 
   // Active Vehicle Management
+  /** Active vehicle make for OEM DTC lookups (e.g. Ford, Toyota). */
+  static getActiveVehicleMake(): string | undefined {
+    return this.getActiveVehicle()?.make;
+  }
+
   static getActiveVehicle(): Vehicle | null {
     // Check if localStorage is available (SSR compatibility)
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {

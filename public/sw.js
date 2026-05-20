@@ -1,8 +1,8 @@
 // Service worker for CarDiag PWA (precache only URLs that exist; Next hashed assets are cached at runtime)
-const CACHE_NAME = 'cardiag-v2-0-2';
-const STATIC_CACHE = 'cardiag-static-v2-0-2';
-const DYNAMIC_CACHE = 'cardiag-dynamic-v2-0-2';
-const API_CACHE = 'cardiag-api-v2-0-2';
+const CACHE_NAME = 'cardiag-v2-0-3';
+const STATIC_CACHE = 'cardiag-static-v2-0-3';
+const DYNAMIC_CACHE = 'cardiag-dynamic-v2-0-3';
+const API_CACHE = 'cardiag-api-v2-0-3';
 
 const STATIC_ASSETS = [
   '/',

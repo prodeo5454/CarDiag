@@ -110,7 +110,7 @@ export class DiagnosticAI {
     const rootCauses = this.inferRootCauses(allCodes, request, powertrain);
     const severity = this.computeSeverity(request, rootCauses);
     const systemImpacts = this.analyzeSystems(request, allCodes, powertrain);
-    const repairPlan = this.buildRepairPlan(rootCauses, allCodes, powertrain);
+    const repairPlan = this.buildRepairPlan(rootCauses, allCodes, powertrain, request.vehicle?.make);
     const evInsights = this.analyzeEV(request, powertrain);
     const warnings = this.buildWarnings(request, allCodes, powertrain);
 
@@ -155,8 +155,10 @@ export class DiagnosticAI {
     const causes: RootCause[] = [];
     const seen = new Set<string>();
 
+    const vehicleMake = request.vehicle?.make;
+
     for (const code of codes) {
-      const dtc = searchDTCByCode(code);
+      const dtc = searchDTCByCode(code, vehicleMake);
       const primary = dtc?.possibleCauses[0] || `Fault indicated by ${code}`;
       const key = `${code}:${primary}`;
       if (seen.has(key)) continue;
@@ -286,7 +288,8 @@ export class DiagnosticAI {
   private static buildRepairPlan(
     causes: RootCause[],
     codes: string[],
-    powertrain: PowertrainType
+    powertrain: PowertrainType,
+    vehicleMake?: string
   ): RepairStep[] {
     const steps: RepairStep[] = [];
     let n = 1;
@@ -310,8 +313,8 @@ export class DiagnosticAI {
     }
 
     for (const cause of causes.slice(0, 3)) {
-      const dtc = codes.find(c => searchDTCByCode(c)?.possibleCauses[0] === cause.cause);
-      const lookup = dtc ? searchDTCByCode(dtc) : null;
+      const dtc = codes.find(c => searchDTCByCode(c, vehicleMake)?.possibleCauses[0] === cause.cause);
+      const lookup = dtc ? searchDTCByCode(dtc, vehicleMake) : null;
       const solution = lookup?.solutions[0] || `Diagnose: ${cause.cause}`;
       steps.push({
         step: n++,

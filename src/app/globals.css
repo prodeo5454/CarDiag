@@ -35,6 +35,12 @@
     @apply bg-surface-50 text-surface-900 border-surface-300;
   }
 
+  html:not(.dark) input.bg-surface-800,
+  html:not(.dark) select.bg-surface-800,
+  html:not(.dark) textarea.bg-surface-800 {
+    @apply bg-surface-50 text-surface-900 border-surface-300;
+  }
+
   html:not(.dark) .btn-secondary {
     @apply bg-surface-100 text-surface-800 border-surface-300 hover:bg-surface-200;
   }
