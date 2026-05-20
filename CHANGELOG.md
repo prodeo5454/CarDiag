@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.2] — 2026-05-20
+
+### Added
+
+- **`scripts/sync-app-version.mjs`** — bumps PWA `sw.js` cache names and `manifest.json` version from `package.json` on build
+- Diagnostics header shows **OEM offline code count** when the bundle is loaded
+
+### Changed
+
+- Reports/vehicle exports use **`APP_VERSION`** from `package.json`
+- **Capacitor Android** skips service worker registration and PWA install prompts
+- Settings hides **Install App** on native Android
+
 ## [2.0.1] — 2026-05-20
 
 ### Added

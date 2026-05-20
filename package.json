@@ -1,6 +1,6 @@
 {
   "name": "cardiag",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "engines": {
     "node": ">=18.18.0"
@@ -8,14 +8,14 @@
   "description": "CarDiag — Universal car diagnostic software",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/sync-app-version.mjs && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "build:oem-db": "node scripts/sync-oem-database.mjs",
     "typecheck": "tsc --noEmit",
     "android:init": "npx cap add android",
-    "android:build": "cross-env STATIC_EXPORT=1 next build && npx cap sync android",
+    "android:build": "node scripts/sync-app-version.mjs && cross-env STATIC_EXPORT=1 next build && npx cap sync android",
     "android:bundle": "npm run android:build && node scripts/android-gradle.mjs bundleRelease",
     "android:apk": "npm run android:build && node scripts/android-gradle.mjs assembleRelease",
     "android:open": "npx cap open android"

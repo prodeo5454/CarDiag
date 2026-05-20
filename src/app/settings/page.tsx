@@ -556,7 +556,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {!isInstalled && canInstall && (
+            {!isNativeApp() && !isInstalled && canInstall && (
               <button
                 onClick={install}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-brand-500/20 border border-brand-500 rounded-lg text-brand-400 hover:bg-brand-500/30 transition-all"

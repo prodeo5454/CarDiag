@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 import { loadOEMDatabase, getOEMDatabaseStats, runOEMAutoSyncIfDue } from '@/lib/oem-database';
 
@@ -29,8 +30,9 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
       setIsInstalled(isInStandaloneMode);
     };
 
-    // Register service worker
+    // Register service worker (web/PWA only — Capacitor Android uses bundled assets)
     const registerServiceWorker = async () => {
+      if (Capacitor.isNativePlatform()) return;
       if ('serviceWorker' in navigator) {
         try {
           const registration = await navigator.serviceWorker.register('/sw.js', {
@@ -72,8 +74,9 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
       }
     };
 
-    // Listen for beforeinstallprompt event
+    // Listen for beforeinstallprompt event (Chromium PWA install)
     const handleBeforeInstallPrompt = (e: Event) => {
+      if (Capacitor.isNativePlatform()) return;
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       

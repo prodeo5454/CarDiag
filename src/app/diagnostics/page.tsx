@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Search,
   Scan,
@@ -23,6 +23,7 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { searchDTCByCode, searchDTCByKeyword, getAllDTCs, interpretDTCCode, getAllSystems } from '@/lib/dtc-database';
+import { getOEMDatabaseStats, isOEMDatabaseLoaded } from '@/lib/oem-database';
 import { useOBD } from '@/lib/obd/OBDContext';
 import { VehicleManager } from '@/lib/vehicle-manager';
 import type { DTCCode, DTCCategory, DTCSeverity } from '@/types';
@@ -52,6 +53,17 @@ export default function DiagnosticsPage() {
   const [storedRaw, setStoredRaw] = useState<string[]>([]);
   const [pendingRaw, setPendingRaw] = useState<string[]>([]);
   const [permanentRaw, setPermanentRaw] = useState<string[]>([]);
+  const [oemCodes, setOemCodes] = useState<number | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (isOEMDatabaseLoaded()) {
+        setOemCodes(getOEMDatabaseStats()?.uniqueCodes ?? null);
+        window.clearInterval(id);
+      }
+    }, 400);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Resolve raw DTC codes against the reference database
   const resolveCode = useCallback(
@@ -193,6 +205,9 @@ export default function DiagnosticsPage() {
           <p className="text-surface-400 text-sm mt-1">
             Read and clear DTCs from the ECU — or use{' '}
             <Link href="/advanced" className="text-brand-400 hover:underline">Advanced AI</Link> for full analysis
+            {oemCodes != null && (
+              <span className="text-success"> · {oemCodes.toLocaleString()} OEM codes offline</span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">

@@ -46,7 +46,7 @@ export interface ImportResult {
 }
 
 export class DataManager {
-  private static readonly SUPPORTED_VERSIONS = ['1.0.0', '2.0.0', '2.0.1'];
+  private static readonly SUPPORTED_VERSIONS = ['1.0.0', '2.0.0', '2.0.1', '2.0.2'];
 
   // Export Functions
   static exportAllData(): ExportData {

@@ -9,7 +9,11 @@
   "orientation": "portrait",
   "scope": "/",
   "lang": "en",
-  "categories": ["utilities", "automotive", "productivity"],
+  "categories": [
+    "utilities",
+    "automotive",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/icons/icon-72x72.svg",
@@ -112,14 +116,24 @@
       "short_name": "Programming",
       "description": "ECU coding and key programming",
       "url": "/programming",
-      "icons": [{ "src": "/icons/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.svg",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Advanced AI",
       "short_name": "Advanced",
       "description": "AI diagnostics and EV analysis",
       "url": "/advanced",
-      "icons": [{ "src": "/icons/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.svg",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false,
@@ -128,5 +142,6 @@
   },
   "launch_handler": {
     "client_mode": "focus-existing"
-  }
+  },
+  "version": "2.0.2"
 }

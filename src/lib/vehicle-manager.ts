@@ -1,3 +1,4 @@
+import { APP_VERSION } from './app-info';
 import { MaintenanceTracker } from './obd/maintenance-tracker';
 
 export interface Vehicle {
@@ -333,7 +334,7 @@ export class VehicleManager {
     return {
       vehicles: this.getVehicles(),
       exportDate: new Date().toISOString(),
-      version: '2.0.0',
+      version: APP_VERSION,
     };
   }
 
