@@ -83,6 +83,16 @@ npm run build
 npm start
 ```
 
+### Android release (v2.0.0)
+
+```bash
+npm run build:oem-db
+npm run android:build
+npm run android:open
+```
+
+See [ANDROID.md](ANDROID.md) for Play Store signing and [CHANGELOG.md](CHANGELOG.md) for release notes.
+
 ## Usage
 
 ### Initial Setup

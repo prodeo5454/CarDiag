@@ -59,9 +59,82 @@ Use **Run** to install on a device or emulator.
 
 `capacitor.config.ts` enables **`server.cleartext`** and **`android.allowMixedContent`** so `ws://` / `http://` WiFi adapters can be tried from the WebView. Some adapters still need firewall or adapter-specific URLs.
 
-## Release signing
+## Release signing (Play Store)
 
-Use Android Studio **Build → Generate Signed Bundle / APK**, or configure signing in `android/app/build.gradle`. Do not commit keystore files (see `.gitignore`).
+Google Play requires an **Android App Bundle (`.aab`)** signed with an upload key.
+
+### 1. Create a keystore (once)
+
+```bat
+keytool -genkey -pair -alias cardiag-upload -keyalg RSA -keysize 2048 -validity 10000 -keystore cardiag-upload.keystore
+```
+
+Store the keystore and passwords **outside the repo** (password manager, secure drive). Never commit `*.keystore` or `keystore.properties`.
+
+### 2. Gradle signing config (local only)
+
+Create `android/keystore.properties` (gitignored):
+
+```properties
+storeFile=../cardiag-upload.keystore
+storePassword=YOUR_STORE_PASSWORD
+keyAlias=cardiag-upload
+keyPassword=YOUR_KEY_PASSWORD
+```
+
+Add to `android/app/build.gradle` inside `android { }` (do not commit passwords):
+
+```gradle
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+android {
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+}
+```
+
+### 3. Build release bundle
+
+```bat
+npm run build:oem-db
+npm run android:build
+cd android
+gradlew.bat bundleRelease
+```
+
+Output: `android/app/build/outputs/bundle/release/app-release.aab`
+
+### 4. Play Console checklist
+
+- **Package name:** `com.cardiag.app` (must match `applicationId`)
+- **Version:** `versionName` / `versionCode` in `android/app/build.gradle` (currently **2.0.0** / **3**)
+- **Permissions:** Bluetooth — declare OBD adapter use in the store listing
+- **Privacy policy:** Required if you collect any data; app is mostly local-first
+- **Screenshots:** Dashboard, Diagnostics, Live Data, Programming, Connection
+
+### 5. Internal testing
+
+Upload the `.aab` to **Internal testing** first, install on a physical device with a real BLE OBD adapter, then promote to production.
+
+Use Android Studio **Build → Generate Signed Bundle / APK** as an alternative to the Gradle steps above.
 
 ## Web vs Android builds
 

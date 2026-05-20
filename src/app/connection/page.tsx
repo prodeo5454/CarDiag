@@ -23,7 +23,10 @@ import {
   Terminal,
   Star,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getPreferences } from '@/lib/preferences';
+import { rememberAdapter } from '@/lib/adapter-history';
+import { usePreferences } from '@/components/providers/PreferencesProvider';
 import { cn } from '@/lib/utils';
 import { PROTOCOL_NAMES, PROTOCOL_VEHICLE_COMPAT } from '@/lib/obd/elm327';
 import { useOBD } from '@/lib/obd/OBDContext';
@@ -47,6 +50,7 @@ export default function ConnectionPage() {
     disconnect,
     sendCommand,
   } = useOBD();
+  const { patchPreferences } = usePreferences();
 
   const [scanType, setScanType] = useState<ConnectionType | 'all'>('all');
   const [connectingId, setConnectingId] = useState<string | null>(null);
@@ -55,9 +59,11 @@ export default function ConnectionPage() {
   const [rawLog, setRawLog] = useState<{ cmd: string; resp: string; time: number }[]>([]);
   const [showTerminal, setShowTerminal] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
+  const [preferredAdapterId, setPreferredAdapterId] = useState('');
 
   useEffect(() => {
     void isCapacitorNativeHost().then(setIsNativeApp);
+    setPreferredAdapterId(getPreferences().obd.preferredAdapter);
   }, []);
 
   const handleScan = async (type: ConnectionType | 'all') => {
@@ -77,6 +83,16 @@ export default function ConnectionPage() {
     await disconnect();
   };
 
+  const handleSetPreferred = (adapterId: string) => {
+    const adapter = adapters.find((a) => a.id === adapterId);
+    if (!adapter) return;
+    rememberAdapter(adapter);
+    const prefs = getPreferences();
+    patchPreferences({ ...prefs, obd: { ...prefs.obd, preferredAdapter: adapterId } });
+    setPreferredAdapterId(adapterId);
+    toast.success(`${adapter.name} is now your preferred adapter`);
+  };
+
   const handleSendRaw = async () => {
     if (!rawCmd.trim()) return;
     try {
@@ -91,8 +107,6 @@ export default function ConnectionPage() {
   const isConnected = connectionState.status === 'connected';
   const isConnecting = connectionState.status === 'connecting';
   const hasError = connectionState.status === 'error';
-  const preferredAdapterId =
-    typeof window !== 'undefined' ? getPreferences().obd.preferredAdapter : '';
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -320,19 +334,45 @@ export default function ConnectionPage() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleConnect(adapter.id)}
-                        disabled={isAdapterConnecting || isConnecting}
-                        className={cn('btn-primary text-[10px] sm:text-sm py-1.5 px-3 sm:py-2 sm:px-4 flex items-center gap-1.5 disabled:opacity-50',
-                          isAdapterConnecting && 'animate-pulse'
-                        )}
-                      >
-                        {isAdapterConnecting ? (
-                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> ...</>
-                        ) : (
-                          <><Plug className="w-3.5 h-3.5" /> Connect</>
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSetPreferred(adapter.id)}
+                          className={cn(
+                            'p-2 rounded-lg border transition-all',
+                            adapter.id === preferredAdapterId
+                              ? 'border-warning/40 bg-warning/10 text-warning'
+                              : 'border-surface-700/50 text-surface-500 hover:text-warning'
+                          )}
+                          title="Set as preferred adapter"
+                        >
+                          <Star
+                            className={cn(
+                              'w-4 h-4',
+                              adapter.id === preferredAdapterId && 'fill-warning'
+                            )}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleConnect(adapter.id)}
+                          disabled={isAdapterConnecting || isConnecting}
+                          className={cn(
+                            'btn-primary text-[10px] sm:text-sm py-1.5 px-3 sm:py-2 sm:px-4 flex items-center gap-1.5 disabled:opacity-50',
+                            isAdapterConnecting && 'animate-pulse'
+                          )}
+                        >
+                          {isAdapterConnecting ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> ...
+                            </>
+                          ) : (
+                            <>
+                              <Plug className="w-3.5 h-3.5" /> Connect
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

@@ -130,3 +130,5 @@ android/captures/
 android/local.properties
 *.jks
 *.keystore
+keystore.properties
+android/keystore.properties

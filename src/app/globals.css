@@ -52,6 +52,35 @@
     @apply bg-white border-surface-200;
   }
 
+  html:not(.dark) .glass-card .text-white,
+  html:not(.dark) .stat-card .text-white,
+  html:not(.dark) h1.text-white,
+  html:not(.dark) h2.text-white,
+  html:not(.dark) h3.text-white,
+  html:not(.dark) h4.text-white {
+    @apply text-surface-900;
+  }
+
+  html:not(.dark) .text-surface-300 {
+    @apply text-surface-700;
+  }
+
+  html:not(.dark) .text-surface-400 {
+    @apply text-surface-600;
+  }
+
+  html:not(.dark) .text-surface-500 {
+    @apply text-surface-600;
+  }
+
+  html:not(.dark) .hover\:bg-surface-800\/30:hover {
+    @apply bg-surface-100;
+  }
+
+  html:not(.dark) ::-webkit-scrollbar-track {
+    @apply bg-surface-200;
+  }
+
   html.no-animations *,
   html.no-animations *::before,
   html.no-animations *::after {

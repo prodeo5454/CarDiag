@@ -16,7 +16,7 @@ export default function SettingsToggle({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-white">{label}</p>
+        <p className="text-sm font-medium">{label}</p>
         {description && <p className="text-xs text-surface-500 mt-0.5">{description}</p>}
       </div>
       <button
