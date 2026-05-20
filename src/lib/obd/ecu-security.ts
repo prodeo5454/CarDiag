@@ -134,6 +134,80 @@ export class ECUSecurity {
     }
   }
 
+  /** Mix immobilizer PIN with ECU seed for UDS 0x27 key (OEM-specific; experimental). */
+  static deriveKeyFromPin(seed: string, pin: string, manufacturer: string): string {
+    const seedBytes = seed.replace(/\s+/g, '').match(/.{1,2}/g) ?? [];
+    const pinDigits = pin.replace(/\D/g, '');
+    const pinBytes: string[] = [];
+    for (let i = 0; i < pinDigits.length; i += 2) {
+      const pair = pinDigits.slice(i, i + 2);
+      pinBytes.push(pair.length === 2 ? pair : `${pair}0`);
+    }
+    if (pinBytes.length === 0) {
+      return seed.padStart(8, '0').slice(-8).toUpperCase();
+    }
+    const mfg = manufacturer.toUpperCase();
+    const out: string[] = [];
+    const max = Math.max(seedBytes.length, pinBytes.length, 4);
+    for (let i = 0; i < max; i++) {
+      const s = parseInt(seedBytes[i % seedBytes.length] || '00', 16);
+      const p = parseInt(pinBytes[i % pinBytes.length] || '00', 16);
+      let b = (s ^ p) & 0xff;
+      if (mfg.includes('FORD') || mfg === 'GM') {
+        b = ((s + p + i) & 0xff) ^ 0xaa;
+      } else if (mfg.includes('VW') || mfg.includes('AUDI')) {
+        b = ((s * 3 + p) & 0xff);
+      }
+      out.push(b.toString(16).padStart(2, '0').toUpperCase());
+    }
+    return out.join(' ');
+  }
+
+  static async unlockWithPin(
+    pin: string,
+    manufacturer: string,
+    sendCommand: (command: string) => Promise<string>,
+    ecuAddress: string = '7E0'
+  ): Promise<{ success: boolean; unlocked: boolean; message: string }> {
+    const digits = pin.replace(/\D/g, '');
+    if (digits.length < 4) {
+      return { success: false, unlocked: false, message: 'PIN must be at least 4 digits' };
+    }
+    try {
+      const seedCmd = `${ecuAddress} 27 01`;
+      const seedResponse = await sendCommand(seedCmd);
+      if (seedResponse.toUpperCase().includes('7F 27')) {
+        const desc = this.getSecurityErrorDescription(
+          seedResponse.toUpperCase().match(/7F 27 \d{2}/)?.[0] ?? ''
+        );
+        return { success: false, unlocked: false, message: desc || `Seed request failed: ${seedResponse}` };
+      }
+      const seed = this.extractSeed(seedResponse);
+      if (!seed) {
+        return {
+          success: false,
+          unlocked: false,
+          message: 'No seed in ECU response — PIN unlock may not apply on this ECU',
+        };
+      }
+      const key = this.deriveKeyFromPin(seed, digits, manufacturer);
+      logPinAttempt(digits.length);
+      const result = await this.sendManualSecurityKey(sendCommand, ecuAddress, key);
+      return {
+        ...result,
+        message: result.unlocked
+          ? `Security unlocked with PIN (${digits.length} digits)`
+          : result.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        unlocked: false,
+        message: error instanceof Error ? error.message : 'PIN unlock failed',
+      };
+    }
+  }
+
   static async sendManualSecurityKey(
     sendCommand: (command: string) => Promise<string>,
     ecuAddress: string,
@@ -422,5 +496,12 @@ export class ECUSecurity {
       attempts: maxRetries, 
       message: `Authentication failed after ${maxRetries} attempts. Last error: ${lastError}` 
     };
+  }
+}
+
+/** Never log PIN digits — only length for diagnostics. */
+function logPinAttempt(pinLength: number): void {
+  if (typeof console !== 'undefined' && console.debug) {
+    console.debug(`[ECUSecurity] PIN unlock attempt (${pinLength} digits)`);
   }
 }

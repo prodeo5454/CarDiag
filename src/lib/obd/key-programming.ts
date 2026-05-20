@@ -114,11 +114,13 @@ export class KeyProgrammingService {
 
   getProceduresForVehicle(make?: string): KeyProgrammingProcedure[] {
     const m = (make || this.manufacturer).toUpperCase();
-    return KEY_PROGRAMMING_PROCEDURES.filter(
-      (p) =>
-        p.manufacturers.some((brand) => m.includes(brand.toUpperCase())) ||
-        p.manufacturers.length > 8
+    if (m === 'GENERIC' || !m.trim()) {
+      return KEY_PROGRAMMING_PROCEDURES;
+    }
+    const matched = KEY_PROGRAMMING_PROCEDURES.filter((p) =>
+      p.manufacturers.some((brand) => m.includes(brand.toUpperCase()))
     );
+    return matched.length > 0 ? matched : KEY_PROGRAMMING_PROCEDURES;
   }
 
   assessAdapterCapability(chipset?: string): {
@@ -168,6 +170,14 @@ export class KeyProgrammingService {
       };
     }
 
+    if (procedure.capability === 'pin_code' && !options?.pin?.trim()) {
+      return {
+        success: false,
+        log: [],
+        message: 'Immobilizer PIN is required for this procedure',
+      };
+    }
+
     const log: string[] = [];
     log.push(`Starting: ${procedure.name}`);
 
@@ -181,20 +191,46 @@ export class KeyProgrammingService {
     }
 
     const mfg = this.matchManufacturer(procedure);
-    if (options?.pin && procedure.capability === 'pin_code') {
-      log.push(`PIN provided (${options.pin.length} digit(s)) — required for immobilizer learn`);
+    const pinDigits = options?.pin?.replace(/\D/g, '') ?? '';
+
+    if (pinDigits) {
+      log.push(`PIN provided (${pinDigits.length} digit(s)) — attempting immobilizer unlock`);
     }
 
     if (mfg) {
       log.push(`Attempting security unlock (${mfg})...`);
-      const auth = await ECUSecurity.unlockECU(mfg, this.sendCommand, this.ecuAddress);
+      let auth: { unlocked: boolean; message: string };
+      if (pinDigits.length >= 4) {
+        auth = await ECUSecurity.unlockWithPin(
+          pinDigits,
+          mfg,
+          this.sendCommand,
+          this.ecuAddress
+        );
+      } else {
+        auth = await ECUSecurity.unlockECU(mfg, this.sendCommand, this.ecuAddress);
+      }
       log.push(auth.message);
       if (!auth.unlocked && procedure.capability !== 'gateway_unlock') {
         return {
           success: false,
           log,
-          message: 'Security unlock failed — cannot proceed with key routine',
+          message: pinDigits
+            ? 'PIN-based security unlock failed — verify PIN and adapter'
+            : 'Security unlock failed — cannot proceed with key routine',
         };
+      }
+    } else if (pinDigits.length >= 4) {
+      log.push('No OEM match — trying generic PIN unlock on target ECU...');
+      const auth = await ECUSecurity.unlockWithPin(
+        pinDigits,
+        this.manufacturer,
+        this.sendCommand,
+        this.ecuAddress
+      );
+      log.push(auth.message);
+      if (!auth.unlocked && procedure.capability === 'pin_code') {
+        return { success: false, log, message: 'PIN unlock failed on this ECU address' };
       }
     }
 

@@ -83,11 +83,12 @@ npm run build
 npm start
 ```
 
-### Android release (v2.0.0)
+### Android release
 
 ```bash
 npm run build:oem-db
-npm run android:build
+npm run android:build      # dev APK / Android Studio
+npm run android:bundle     # Play Store .aab (needs android/keystore.properties)
 npm run android:open
 ```
 

@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "android:init": "npx cap add android",
     "android:build": "cross-env STATIC_EXPORT=1 next build && npx cap sync android",
+    "android:bundle": "npm run android:build && cd android && gradlew.bat bundleRelease",
     "android:open": "npx cap open android"
   },
   "dependencies": {

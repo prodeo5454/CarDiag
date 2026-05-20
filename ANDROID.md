@@ -82,43 +82,16 @@ keyAlias=cardiag-upload
 keyPassword=YOUR_KEY_PASSWORD
 ```
 
-Add to `android/app/build.gradle` inside `android { }` (do not commit passwords):
-
-```gradle
-def keystorePropsFile = rootProject.file("keystore.properties")
-def keystoreProps = new Properties()
-if (keystorePropsFile.exists()) {
-    keystoreProps.load(new FileInputStream(keystorePropsFile))
-}
-
-android {
-    signingConfigs {
-        release {
-            if (keystorePropsFile.exists()) {
-                storeFile file(keystoreProps['storeFile'])
-                storePassword keystoreProps['storePassword']
-                keyAlias keystoreProps['keyAlias']
-                keyPassword keystoreProps['keyPassword']
-            }
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-        }
-    }
-}
-```
+`android/app/build.gradle` already loads `android/keystore.properties` when present (debug builds stay unsigned).
 
 ### 3. Build release bundle
 
 ```bat
 npm run build:oem-db
-npm run android:build
-cd android
-gradlew.bat bundleRelease
+npm run android:bundle
 ```
+
+Or step by step: `npm run android:build`, then `cd android && gradlew.bat bundleRelease`.
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
