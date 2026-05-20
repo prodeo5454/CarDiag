@@ -1,3 +1,4 @@
+import { APP_VERSION } from './app-info';
 import { MaintenanceTracker } from './obd/maintenance-tracker';
 import { VehicleManager } from './vehicle-manager';
 import { DiagnosticWorkflows } from './obd/diagnostic-workflows';
@@ -45,8 +46,7 @@ export interface ImportResult {
 }
 
 export class DataManager {
-  private static readonly APP_VERSION = '2.0.0';
-  private static readonly SUPPORTED_VERSIONS = ['1.0.0', '2.0.0'];
+  private static readonly SUPPORTED_VERSIONS = ['1.0.0', '2.0.0', '2.0.1'];
 
   // Export Functions
   static exportAllData(): ExportData {
@@ -88,11 +88,11 @@ export class DataManager {
     }
 
     const exportData: ExportData = {
-      version: this.APP_VERSION,
+      version: APP_VERSION,
       exportDate: new Date().toISOString(),
       appInfo: {
         name: 'CarDiag Pro',
-        version: this.APP_VERSION,
+        version: APP_VERSION,
         platform: 'PWA'
       },
       vehicles,
@@ -120,7 +120,7 @@ export class DataManager {
     return {
       vehicles: VehicleManager.getVehicles(),
       exportDate: new Date().toISOString(),
-      version: this.APP_VERSION
+      version: APP_VERSION
     };
   }
 
@@ -129,7 +129,7 @@ export class DataManager {
       maintenanceHistory: MaintenanceTracker.getMaintenanceHistory(),
       maintenanceSchedules: MaintenanceTracker.getMaintenanceSchedules(),
       exportDate: new Date().toISOString(),
-      version: this.APP_VERSION
+      version: APP_VERSION
     };
   }
 
@@ -147,7 +147,7 @@ export class DataManager {
     return {
       diagnosticReports: reports,
       exportDate: new Date().toISOString(),
-      version: this.APP_VERSION
+      version: APP_VERSION
     };
   }
 

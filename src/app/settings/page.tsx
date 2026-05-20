@@ -40,6 +40,7 @@ import {
 } from '@/lib/preferences';
 import { getKnownAdapters } from '@/lib/adapter-history';
 import SettingsToggle from '@/components/ui/SettingsToggle';
+import { APP_BUILD_DATE, APP_VERSION, getPlatformLabel, isNativeApp } from '@/lib/app-info';
 
 export default function SettingsPage() {
   const { isInstalled, canInstall, install } = usePWA();
@@ -545,13 +546,13 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-white">Installed as PWA</p>
+                <p className="text-sm text-heading">Installed as PWA</p>
                 <p className="text-xs text-surface-500">Native app experience</p>
               </div>
               <div className={`px-2 py-1 rounded-full text-xs ${
-                isInstalled ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+                isInstalled || isNativeApp() ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
               }`}>
-                {isInstalled ? 'Installed' : 'Browser'}
+                {isNativeApp() ? 'Native' : isInstalled ? 'Installed' : 'Browser'}
               </div>
             </div>
 
@@ -568,15 +569,15 @@ export default function SettingsPage() {
             <div className="pt-3 border-t border-surface-700/50 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-surface-500">Version</span>
-                <span className="text-xs text-surface-300">2.0.0</span>
+                <span className="text-xs text-surface-300">{APP_VERSION}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-surface-500">Build</span>
-                <span className="text-xs text-surface-300">2026.04.13</span>
+                <span className="text-xs text-surface-300">{APP_BUILD_DATE}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-surface-500">Platform</span>
-                <span className="text-xs text-surface-300">PWA</span>
+                <span className="text-xs text-surface-300">{getPlatformLabel()}</span>
               </div>
             </div>
           </div>

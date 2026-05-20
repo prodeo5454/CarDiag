@@ -1,6 +1,6 @@
 {
   "name": "cardiag",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "engines": {
     "node": ">=18.18.0"
@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "android:init": "npx cap add android",
     "android:build": "cross-env STATIC_EXPORT=1 next build && npx cap sync android",
-    "android:bundle": "npm run android:build && cd android && gradlew.bat bundleRelease",
+    "android:bundle": "npm run android:build && node scripts/android-gradle.mjs bundleRelease",
+    "android:apk": "npm run android:build && node scripts/android-gradle.mjs assembleRelease",
     "android:open": "npx cap open android"
   },
   "dependencies": {

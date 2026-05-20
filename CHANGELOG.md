@@ -5,13 +5,16 @@
 ### Added
 
 - **PIN-based immobilizer unlock** — `ECUSecurity.unlockWithPin` used when a PIN is entered on key programming procedures
-- **`npm run android:bundle`** — static export, Cap sync, and signed `bundleRelease` (when `android/keystore.properties` exists)
+- **`npm run android:bundle`** / **`android:apk`** — static export, Cap sync, and Gradle release builds
+- **`scripts/android-gradle.mjs`** — uses JDK 11+ (Android Studio JBR when system Java is 8)
 - Gradle **release signing** wired from `android/keystore.properties` (optional, local only)
+- **App info** — version/build/platform from `package.json` and Capacitor in Settings
 
 ### Changed
 
 - Light theme: broader overrides for `text-white` in main content and muted surfaces
 - Key programming: show all procedures when vehicle make is generic or unmatched
+- Android **versionCode 4** / versionName **2.0.1**
 
 ## [2.0.0] — 2026-05-20
 

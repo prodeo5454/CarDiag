@@ -6,7 +6,8 @@ The Android app is the same **Next.js** UI running inside a **Capacitor** WebVie
 
 - **Node.js** 18+ and npm  
 - **Android Studio** (SDK, platform tools, an emulator or USB device)  
-- **JDK 17** (matches current Capacitor / AGP defaults)
+- **JDK 11+** (JDK 17 recommended; Android Studio’s bundled **JBR** works).  
+  If `java -version` shows **1.8**, `npm run android:bundle` still works when Android Studio is installed — the script uses Studio’s JBR. Or set `JAVA_HOME` to your JDK 17 path.
 
 ## One-time setup
 
