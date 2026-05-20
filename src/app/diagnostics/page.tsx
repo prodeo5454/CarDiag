@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { searchDTCByCode, searchDTCByKeyword, getAllDTCs, interpretDTCCode, getAllSystems } from '@/lib/dtc-database';
 import { useOBD } from '@/lib/obd/OBDContext';
+import { VehicleManager } from '@/lib/vehicle-manager';
 import type { DTCCode, DTCCategory, DTCSeverity } from '@/types';
 
 export default function DiagnosticsPage() {
@@ -36,6 +37,8 @@ export default function DiagnosticsPage() {
   } = useOBD();
 
   const isConnected = connectionState.status === 'connected';
+  const activeVehicle = VehicleManager.getActiveVehicle();
+  const vehicleMake = activeVehicle?.make;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<DTCCategory | 'all'>('all');
@@ -51,28 +54,37 @@ export default function DiagnosticsPage() {
   const [permanentRaw, setPermanentRaw] = useState<string[]>([]);
 
   // Resolve raw DTC codes against the reference database
-  const resolveCode = (code: string, tag: 'stored' | 'pending' | 'permanent'): DTCCode & { tag: string } => {
-    const lookup = searchDTCByCode(code);
-    if (lookup) return { ...lookup, tag };
-    return {
-      code,
-      description: `Unknown DTC — ${code}`,
-      category: (code.startsWith('P') ? 'powertrain' : code.startsWith('C') ? 'chassis' : code.startsWith('B') ? 'body' : 'network') as DTCCategory,
-      severity: tag === 'permanent' ? 'critical' : tag === 'stored' ? 'warning' : 'pending',
-      system: 'Unknown',
-      possibleCauses: ['Refer to vehicle service manual'],
-      symptoms: ['Check engine light may be on'],
-      solutions: ['Diagnose with full service manual procedure'],
-      tag,
-    };
-  };
+  const resolveCode = useCallback(
+    (code: string, tag: 'stored' | 'pending' | 'permanent'): DTCCode & { tag: string } => {
+      const lookup = searchDTCByCode(code, vehicleMake);
+      if (lookup) return { ...lookup, tag };
+      return {
+        code,
+        description: `Unknown DTC — ${code}`,
+        category: (code.startsWith('P')
+          ? 'powertrain'
+          : code.startsWith('C')
+            ? 'chassis'
+            : code.startsWith('B')
+              ? 'body'
+              : 'network') as DTCCategory,
+        severity: tag === 'permanent' ? 'critical' : tag === 'stored' ? 'warning' : 'pending',
+        system: 'Unknown',
+        possibleCauses: ['Refer to vehicle service manual'],
+        symptoms: ['Check engine light may be on'],
+        solutions: ['Diagnose with full service manual procedure'],
+        tag,
+      };
+    },
+    [vehicleMake]
+  );
 
   const activeCodes = useMemo(() => {
-    const stored = storedRaw.map(c => resolveCode(c, 'stored'));
-    const pending = pendingRaw.map(c => resolveCode(c, 'pending'));
-    const permanent = permanentRaw.map(c => resolveCode(c, 'permanent'));
+    const stored = storedRaw.map((c) => resolveCode(c, 'stored'));
+    const pending = pendingRaw.map((c) => resolveCode(c, 'pending'));
+    const permanent = permanentRaw.map((c) => resolveCode(c, 'permanent'));
     return [...stored, ...pending, ...permanent];
-  }, [storedRaw, pendingRaw, permanentRaw]);
+  }, [storedRaw, pendingRaw, permanentRaw, resolveCode]);
 
   const filteredCodes = useMemo(() => {
     let codes: (DTCCode & { tag?: string })[] = searchQuery.trim()
@@ -109,6 +121,25 @@ export default function DiagnosticsPage() {
       setScanning(false);
     }
   }, [isConnected, readDTCs, readPendingDTCs, readPermanentDTCs]);
+
+  const exportScan = useCallback(() => {
+    const data = {
+      timestamp: new Date().toISOString(),
+      vin: connectionState.vin,
+      stored: storedRaw,
+      pending: pendingRaw,
+      permanent: permanentRaw,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dtc-scan-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [connectionState.vin, storedRaw, pendingRaw, permanentRaw]);
 
   const handleClear = useCallback(async () => {
     if (!isConnected) return;
@@ -159,7 +190,10 @@ export default function DiagnosticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Diagnostics</h1>
-          <p className="text-surface-400 text-sm mt-1">Read and clear DTCs from the ECU</p>
+          <p className="text-surface-400 text-sm mt-1">
+            Read and clear DTCs from the ECU — or use{' '}
+            <Link href="/advanced" className="text-brand-400 hover:underline">Advanced AI</Link> for full analysis
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
@@ -170,7 +204,11 @@ export default function DiagnosticsPage() {
             {clearing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             {clearing ? 'Clearing...' : 'Clear'}
           </button>
-          <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5" disabled={!scanComplete}>
+          <button
+            onClick={exportScan}
+            className="btn-secondary flex items-center gap-2 text-xs sm:text-sm py-2 px-3 sm:px-5"
+            disabled={!scanComplete}
+          >
             <Download className="w-4 h-4" /> Export
           </button>
           {isConnected ? (

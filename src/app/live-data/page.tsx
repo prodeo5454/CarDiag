@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useOBD } from '@/lib/obd/OBDContext';
 import { getAllCategories } from '@/lib/obd/pids';
+import { formatSensorValue, formatRangeLabel } from '@/lib/units';
+import { getPollingIntervalMs } from '@/lib/preferences';
 import type { OBDPIDDefinition } from '@/types';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 
@@ -18,6 +20,7 @@ export default function LiveDataPage() {
     startPolling,
     stopPolling,
     getSupportedPIDs,
+    refreshLiveData,
   } = useOBD();
 
   const isConnected = connectionState.status === 'connected';
@@ -43,6 +46,27 @@ export default function LiveDataPage() {
   const isInRange = (pid: OBDPIDDefinition, value: number) =>
     value >= pid.min && value <= pid.max;
 
+  const handleRefresh = async () => {
+    if (!isConnected) return;
+    await refreshLiveData(supportedPIDs);
+  };
+
+  const handleRecord = () => {
+    const data: Record<string, { time: number; value: number }[]> = {};
+    liveHistory.forEach((points, pid) => {
+      data[pid] = points;
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `live-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
@@ -53,12 +77,19 @@ export default function LiveDataPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {isConnected && (
-            <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2" disabled={!isPolling}>
+            <button
+              onClick={handleRefresh}
+              className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2"
+            >
               <RefreshCw className={cn('w-3.5 h-3.5 sm:w-4 h-4', isPolling && 'animate-spin')} />
               <span className="hidden xs:inline">Refresh</span>
             </button>
           )}
-          <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2" disabled={!isPolling}>
+          <button
+            onClick={handleRecord}
+            className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 py-2 sm:px-4 sm:py-2"
+            disabled={liveHistory.size === 0}
+          >
             <Download className="w-3.5 h-3.5 sm:w-4 h-4" />
             <span className="hidden xs:inline">Record</span>
           </button>
@@ -115,7 +146,7 @@ export default function LiveDataPage() {
                 <span className={cn('w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full', isPolling ? 'bg-success animate-pulse' : 'bg-surface-500')} />
                 {isPolling ? 'Streaming' : 'Paused'}
               </span>
-              <span>1.0s</span>
+              <span>{(getPollingIntervalMs() / 1000).toFixed(1)}s</span>
               <span className="truncate max-w-[100px] sm:max-w-none">
                 {connectionState.protocol ? connectionState.protocol.replace(/_/g, ' ') : 'Unknown'}
               </span>
@@ -160,10 +191,24 @@ export default function LiveDataPage() {
 
                 {/* Value */}
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className={cn('text-2xl sm:text-3xl font-bold font-mono', inRange ? 'text-white' : 'text-warning')}>
-                    {value !== null ? value.toFixed(pid.unit === 'RPM' || pid.unit === 'kPa' ? 0 : 1) : '--'}
-                  </span>
-                  <span className="text-surface-400 text-xs sm:text-sm">{pid.unit}</span>
+                  {value !== null ? (
+                    (() => {
+                      const f = formatSensorValue(value, pid.unit);
+                      return (
+                        <>
+                          <span className={cn('text-2xl sm:text-3xl font-bold font-mono', inRange ? 'text-white' : 'text-warning')}>
+                            {f.display}
+                          </span>
+                          <span className="text-surface-400 text-xs sm:text-sm">{f.unitLabel}</span>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <span className="text-2xl sm:text-3xl font-bold font-mono text-surface-500">--</span>
+                      <span className="text-surface-400 text-xs sm:text-sm">{pid.unit}</span>
+                    </>
+                  )}
                 </div>
 
                 {/* Range bar */}

@@ -3,6 +3,7 @@ import './globals.css';
 import Sidebar from '@/components/layout/Sidebar';
 import OBDWrapper from '@/components/providers/OBDWrapper';
 import PWAProvider from '@/components/PWAProvider';
+import { PreferencesProvider } from '@/components/providers/PreferencesProvider';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
@@ -40,8 +41,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className="font-sans overflow-x-hidden">
+        <PreferencesProvider>
         <PWAProvider>
           <OBDWrapper>
             <div className="flex min-h-screen relative">
@@ -54,6 +56,7 @@ export default function RootLayout({
             </div>
           </OBDWrapper>
         </PWAProvider>
+        </PreferencesProvider>
         <Toaster />
       </body>
     </html>

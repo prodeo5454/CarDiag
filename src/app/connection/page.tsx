@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Bluetooth,
   Wifi,
@@ -21,10 +21,13 @@ import {
   Cpu,
   Car,
   Terminal,
+  Star,
 } from 'lucide-react';
+import { getPreferences } from '@/lib/preferences';
 import { cn } from '@/lib/utils';
 import { PROTOCOL_NAMES, PROTOCOL_VEHICLE_COMPAT } from '@/lib/obd/elm327';
 import { useOBD } from '@/lib/obd/OBDContext';
+import { isCapacitorNativeHost } from '@/lib/obd/native-ble-platform';
 import type { ConnectionType, OBDProtocol } from '@/types';
 
 const CONNECTION_ICONS: Record<ConnectionType, typeof Bluetooth> = {
@@ -51,6 +54,11 @@ export default function ConnectionPage() {
   const [rawCmd, setRawCmd] = useState('');
   const [rawLog, setRawLog] = useState<{ cmd: string; resp: string; time: number }[]>([]);
   const [showTerminal, setShowTerminal] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
+
+  useEffect(() => {
+    void isCapacitorNativeHost().then(setIsNativeApp);
+  }, []);
 
   const handleScan = async (type: ConnectionType | 'all') => {
     setScanType(type);
@@ -83,9 +91,23 @@ export default function ConnectionPage() {
   const isConnected = connectionState.status === 'connected';
   const isConnecting = connectionState.status === 'connecting';
   const hasError = connectionState.status === 'error';
+  const preferredAdapterId =
+    typeof window !== 'undefined' ? getPreferences().obd.preferredAdapter : '';
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {isNativeApp && (
+        <div className="glass-card p-4 border border-brand-500/25 flex gap-3 items-start">
+          <Bluetooth className="w-5 h-5 text-brand-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-white">Android / iOS app</p>
+            <p className="text-xs text-surface-400 mt-1">
+              Use Bluetooth LE to pair your OBD adapter. USB serial is not available on phones — Wi‑Fi
+              adapters may work when the adapter IP is reachable.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -280,6 +302,11 @@ export default function ConnectionPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs sm:text-sm font-bold text-white truncate">{adapter.name}</h4>
+                          {adapter.id === preferredAdapterId && (
+                            <span title="Preferred adapter">
+                              <Star className="w-3.5 h-3.5 text-warning fill-warning flex-shrink-0" />
+                            </span>
+                          )}
                           {adapter.paired && <span className="text-[8px] sm:text-[10px] px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/20">Paired</span>}
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] sm:text-xs text-surface-400 mt-0.5">

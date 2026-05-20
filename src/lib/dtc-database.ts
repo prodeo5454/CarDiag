@@ -1,4 +1,10 @@
 import { DTCCode, DTCCategory, DTCSeverity } from '@/types';
+import {
+  isOEMDatabaseLoaded,
+  lookupOEMDTC,
+  oemToDTCCode,
+  searchOEMByKeyword,
+} from '@/lib/oem-database';
 
 const dtcDatabase: DTCCode[] = [
   // ===== POWERTRAIN (P) CODES =====
@@ -341,19 +347,66 @@ const dtcDatabase: DTCCode[] = [
     estimatedCost: { min: 100, max: 1000 } },
 ];
 
-export function searchDTCByCode(code: string): DTCCode | undefined {
-  return dtcDatabase.find(d => d.code.toLowerCase() === code.toLowerCase());
+export function searchDTCByCode(code: string, vehicleMake?: string): DTCCode | undefined {
+  const normalized = code.toUpperCase().replace(/\s/g, '');
+  const builtin = dtcDatabase.find(d => d.code.toUpperCase() === normalized);
+  if (builtin) return builtin;
+
+  if (isOEMDatabaseLoaded()) {
+    const oem = lookupOEMDTC(normalized, vehicleMake);
+    if (oem) return oemToDTCCode(oem);
+  }
+
+  return synthesizeMinimalDTC(normalized);
 }
 
-export function searchDTCByKeyword(keyword: string): DTCCode[] {
+export function searchDTCByKeyword(keyword: string, vehicleMake?: string): DTCCode[] {
   const lower = keyword.toLowerCase();
-  return dtcDatabase.filter(d =>
+  const fromBuiltin = dtcDatabase.filter(d =>
     d.code.toLowerCase().includes(lower) ||
     d.description.toLowerCase().includes(lower) ||
     d.system.toLowerCase().includes(lower) ||
     d.possibleCauses.some(c => c.toLowerCase().includes(lower)) ||
     d.symptoms.some(s => s.toLowerCase().includes(lower))
   );
+
+  if (!isOEMDatabaseLoaded()) return fromBuiltin;
+
+  const oemHits = searchOEMByKeyword(keyword, 40).map(oemToDTCCode);
+  const seen = new Set(fromBuiltin.map(d => `${d.code}:${d.description}`));
+  const merged = [...fromBuiltin];
+
+  for (const hit of oemHits) {
+    const key = `${hit.code}:${hit.description}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(hit);
+    }
+  }
+
+  if (vehicleMake && /^[pbcu][0-9a-f]{4}$/i.test(keyword.trim())) {
+    const exact = searchDTCByCode(keyword.trim(), vehicleMake);
+    if (exact && !merged.some(m => m.code === exact.code && m.description === exact.description)) {
+      merged.unshift(exact);
+    }
+  }
+
+  return merged.slice(0, 80);
+}
+
+function synthesizeMinimalDTC(code: string): DTCCode | undefined {
+  const interpreted = interpretDTCCode(code);
+  if (!interpreted) return undefined;
+  return {
+    code,
+    description: `${interpreted.type} code ${code} — see OEM service information`,
+    category: interpreted.category,
+    severity: interpreted.category === 'network' ? 'critical' : 'warning',
+    system: interpreted.category === 'powertrain' ? 'Powertrain' : 'Network/Body/Chassis',
+    possibleCauses: ['Manufacturer-specific or rare code — consult OEM documentation'],
+    symptoms: ['Warning lamp may be active'],
+    solutions: ['Look up code in OEM service manual', 'Verify with bidirectional tests'],
+  };
 }
 
 export function getDTCsByCategory(category: DTCCategory): DTCCode[] {

@@ -102,6 +102,13 @@ npm start
 - Trouble code reading and clearing
 - Protocol detection and configuration
 - ECU information display
+- Offline OEM DTC database with custom JSON import and weekly update checks
+
+#### ECU Coding & Key Programming (`/programming`)
+- UDS read/write of coding data identifiers (DIDs) with risk confirmations
+- Guided immobilizer / key procedures (add spare, all-keys-lost workflows)
+- Security access (UDS 0x27) using manufacturer seed-key profiles
+- **Hardware limits**: Full reprogramming and dealer-level key coding typically require STN1110/OBDLink-class adapters or OEM tools—not generic ELM327 clones. Incorrect writes can damage ECUs.
 
 #### Maintenance
 - Service history tracking

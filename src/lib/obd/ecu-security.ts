@@ -134,6 +134,36 @@ export class ECUSecurity {
     }
   }
 
+  static async sendManualSecurityKey(
+    sendCommand: (command: string) => Promise<string>,
+    ecuAddress: string,
+    keyHex: string
+  ): Promise<{ success: boolean; unlocked: boolean; message: string }> {
+    const key = keyHex.replace(/\s+/g, ' ').trim();
+    if (!key) {
+      return { success: false, unlocked: false, message: 'Key is empty' };
+    }
+    try {
+      const cmd = `${ecuAddress} 27 02 ${key}`;
+      const resp = await sendCommand(cmd);
+      const ok =
+        resp.toUpperCase().includes('67 02') ||
+        resp.includes('OK') ||
+        (!resp.toUpperCase().includes('7F') && resp.length > 0);
+      return {
+        success: ok,
+        unlocked: ok,
+        message: ok ? 'Manual security key accepted' : `Key rejected: ${resp}`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        unlocked: false,
+        message: error instanceof Error ? error.message : 'Manual unlock failed',
+      };
+    }
+  }
+
   static async unlockECU(
     manufacturer: string,
     sendCommand: (command: string) => Promise<string>,

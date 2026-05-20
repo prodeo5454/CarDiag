@@ -599,4 +599,47 @@ export class J1939Protocol {
       65261: 'Aftertreatment'
     };
   }
+
+  /** Probe bus with standard OBD requests (works on many J1939 vehicles via OBD port) */
+  static async probeBus(sendCommand: (cmd: string) => Promise<string>): Promise<{
+    log: string[];
+    samples: Array<{ label: string; value: string }>;
+  }> {
+    const log: string[] = [];
+    const samples: Array<{ label: string; value: string }> = [];
+
+    const runStep = async (label: string, cmd: string) => {
+      try {
+        const resp = await sendCommand(cmd);
+        const short = resp.replace(/\s+/g, ' ').trim().slice(0, 100);
+        log.push(`${cmd} → ${short}`);
+        samples.push({ label, value: short || '(no data)' });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'error';
+        log.push(`${cmd} → ${msg}`);
+        samples.push({ label, value: msg });
+      }
+    };
+
+    await runStep('Adapter reset (ATZ)', 'ATZ');
+    await runStep('J1939 CAN 250k (ATSP6)', 'ATSP6');
+    await runStep('Headers on (ATH1)', 'ATH1');
+    await runStep('Line feeds off (ATL0)', 'ATL0');
+
+    const probes = [
+      { label: 'Supported PIDs (0100)', cmd: '0100' },
+      { label: 'Engine RPM (010C)', cmd: '010C' },
+      { label: 'Vehicle speed (010D)', cmd: '010D' },
+      { label: 'Coolant temp (0105)', cmd: '0105' },
+      { label: 'Stored DTCs (03)', cmd: '03' },
+    ];
+
+    for (const p of probes) {
+      await runStep(p.label, p.cmd);
+    }
+
+    await runStep('Restore auto protocol (ATSP0)', 'ATSP0');
+
+    return { log, samples };
+  }
 }

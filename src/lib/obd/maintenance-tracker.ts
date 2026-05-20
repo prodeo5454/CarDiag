@@ -469,6 +469,16 @@ export class MaintenanceTracker {
     }
   }
 
+  static ensureDefaultSchedules(vehicleId: string, vin: string, currentMileage: number): MaintenanceSchedule[] {
+    const existing = this.getMaintenanceSchedules(vehicleId);
+    if (existing.length > 0) return existing;
+
+    const defaults = this.createDefaultSchedules(vehicleId, vin, currentMileage);
+    const all = [...this.getMaintenanceSchedules(), ...defaults];
+    this.saveMaintenanceSchedules(all);
+    return defaults;
+  }
+
   // Default maintenance schedules
   static createDefaultSchedules(vehicleId: string, vin: string, currentMileage: number): MaintenanceSchedule[] {
     const defaults: Omit<MaintenanceSchedule, 'id' | 'nextMileage' | 'nextDate'>[] = [

@@ -11,6 +11,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "build:oem-db": "node scripts/sync-oem-database.mjs",
+    "typecheck": "tsc --noEmit",
     "android:init": "npx cap add android",
     "android:build": "cross-env STATIC_EXPORT=1 next build && npx cap sync android",
     "android:open": "npx cap open android"
@@ -44,6 +47,7 @@
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^2.1.0"
   }
 }

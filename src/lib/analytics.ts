@@ -1,5 +1,6 @@
 import { MaintenanceTracker } from './obd/maintenance-tracker';
 import { VehicleManager } from './vehicle-manager';
+import { getConnectionTrends } from './connection-events';
 
 export interface TrendData {
   period: string;
@@ -237,18 +238,11 @@ export class Analytics {
       label: `${count} scans`
     }));
 
-    // Connection trends (placeholder - would need actual connection data)
-    const connections: TrendData[] = [];
-    const now = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = monthDate.toISOString().substring(0, 7);
-      connections.push({
-        period: monthKey,
-        value: Math.floor(Math.random() * 20) + 5, // Placeholder data
-        label: 'connections'
-      });
-    }
+    const connections: TrendData[] = getConnectionTrends(12).map(({ period, value, label }) => ({
+      period,
+      value,
+      label,
+    }));
 
     return {
       mileage,

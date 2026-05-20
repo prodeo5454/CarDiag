@@ -40,7 +40,7 @@ interface ScanReport {
 }
 
 export default function ReportsPage() {
-  const { connectionState, readDTCs, readPendingDTCs, readIMReadiness, readPIDValue, getSupportedPIDs } = useOBD();
+  const { connectionState, readDTCs, readPendingDTCs, readPermanentDTCs, readIMReadiness, readPIDValue, getSupportedPIDs } = useOBD();
   const isConnected = connectionState.status === 'connected';
 
   const [reports, setReports] = useState<ScanReport[]>([]);
@@ -73,7 +73,11 @@ export default function ReportsPage() {
     
     setIsGenerating(true);
     try {
-      const [stored, pending] = await Promise.all([readDTCs(), readPendingDTCs()]);
+      const [stored, pending, permanent] = await Promise.all([
+        readDTCs(),
+        readPendingDTCs(),
+        readPermanentDTCs(),
+      ]);
       const readiness = await readIMReadiness();
       const supported = getSupportedPIDs();
       
@@ -114,6 +118,7 @@ export default function ReportsPage() {
       let healthScore = 100;
       healthScore -= stored.length * 10;
       healthScore -= pending.length * 3;
+      healthScore -= permanent.length * 15;
       
       const incompleteMonitors = readiness.filter(m => m.available && !m.complete).length;
       healthScore -= incompleteMonitors * 2;
@@ -133,7 +138,7 @@ export default function ReportsPage() {
         healthScore,
         codesStored: stored,
         codesPending: pending,
-        codesPermanent: [], // Would need separate command for permanent codes
+        codesPermanent: permanent,
         readinessComplete: readiness.filter(m => m.available && m.complete).length,
         readinessTotal: readiness.filter(m => m.available).length,
         sensorData,

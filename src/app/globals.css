@@ -14,6 +14,52 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+  html:not(.dark) body {
+    @apply bg-surface-100 text-surface-900;
+  }
+
+  html:not(.dark) .glass-card {
+    @apply bg-white border-surface-200 text-surface-900;
+  }
+
+  html:not(.dark) .section-title {
+    @apply text-surface-900;
+  }
+
+  html:not(.dark) .section-subtitle {
+    @apply text-surface-600;
+  }
+
+  html:not(.dark) .input-field,
+  html:not(.dark) .select-field {
+    @apply bg-surface-50 text-surface-900 border-surface-300;
+  }
+
+  html:not(.dark) .btn-secondary {
+    @apply bg-surface-100 text-surface-800 border-surface-300 hover:bg-surface-200;
+  }
+
+  html:not(.dark) .stat-card,
+  html:not(.dark) .hub-tab {
+    @apply bg-surface-50 text-surface-700 border-surface-200;
+  }
+
+  html:not(.dark) .hub-tab-active {
+    @apply bg-brand-500/15 text-brand-700 border-brand-500/40;
+  }
+
+  html:not(.dark) aside {
+    @apply bg-white border-surface-200;
+  }
+
+  html.no-animations *,
+  html.no-animations *::before,
+  html.no-animations *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -101,6 +147,14 @@
     @apply text-sm text-surface-400;
   }
 
+  .hub-tab {
+    @apply px-3 py-2 rounded-xl text-xs font-medium text-surface-400 bg-surface-800/40 border border-transparent transition-all;
+  }
+
+  .hub-tab-active {
+    @apply bg-brand-500/20 text-brand-400 border-brand-500/40;
+  }
+
   .glow-brand {
     box-shadow: 0 0 20px rgba(51, 141, 255, 0.15), 0 0 40px rgba(51, 141, 255, 0.05);
   }
@@ -137,6 +191,20 @@
 
   .animate-scale-in {
     animation: scaleIn 0.3s ease-out;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.surface.600') theme('colors.surface.900');
   }
 }
 

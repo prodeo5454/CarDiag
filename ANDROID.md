@@ -27,13 +27,16 @@ npx cap sync android
 
 ## Build and sync web assets
 
-Whenever you change the web app:
+Whenever you change the web app (new routes, programming hub, OEM DB, etc.):
 
 ```bat
+npm run build:oem-db
 npm run android:build
 ```
 
-This runs a **static Next export** (`STATIC_EXPORT=1`) into `out/`, then `cap sync` copies it into `android/`.
+This runs a **static Next export** (`STATIC_EXPORT=1`) into `out/`, then `cap sync` copies it into `android/app/src/main/assets/public/`. **The installed APK does not auto-update** — you must rebuild and reinstall after web changes.
+
+Verify export includes `/programming`, `/advanced`, and `out/data/oem/dtc-bundle.json` before shipping.
 
 ## Open in Android Studio
 

@@ -23,5 +23,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
       - name: Build
         run: npm run build
+
+      - name: Build OEM database
+        run: npm run build:oem-db
+
+      - name: Android static export
+        run: npm run android:build

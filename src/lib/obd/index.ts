@@ -14,3 +14,5 @@ export * from './repair-operations';
 export * from './maintenance-tracker';
 export * from './diagnostic-workflows';
 export * from './cost-estimator';
+export * from './ecu-coding';
+export * from './key-programming';

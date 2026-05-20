@@ -21,6 +21,7 @@ import { Analytics, type AnalyticsData, type TrendData } from '@/lib/analytics';
 import { VehicleManager } from '@/lib/vehicle-manager';
 import { MaintenanceTracker } from '@/lib/obd/maintenance-tracker';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -38,6 +39,8 @@ export default function AnalyticsPage() {
         : Analytics.generateAnalytics(selectedVehicle, timeRange);
       setAnalyticsData(data);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load analytics';
+      toast.error(message);
       console.error('Failed to load analytics:', error);
     } finally {
       setLoading(false);

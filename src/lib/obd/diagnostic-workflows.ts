@@ -743,15 +743,27 @@ export class DiagnosticWorkflows {
   }
 
   private static evaluateCheck(
-    check: any,
+    check: { condition: string; successMessage: string; failureMessage: string },
     results: Record<string, any>
   ): { passed: boolean; message: string } {
-    // This would evaluate the check condition based on results
-    // For now, return a default result
-    return {
-      passed: true,
-      message: check.successMessage
-    };
+    const atrv = results['ATRV'];
+    if (check.condition.includes('voltage') && atrv?.response) {
+      const value = parseFloat(String(atrv.response).replace(/[^\d.]/g, ''));
+      const passed = value >= 12.0;
+      return {
+        passed,
+        message: passed ? check.successMessage : check.failureMessage,
+      };
+    }
+
+    const failedCommand = Object.values(results).some(
+      (r: { passed?: boolean; success?: boolean }) => r?.passed === false || r?.success === false
+    );
+    if (failedCommand) {
+      return { passed: false, message: check.failureMessage };
+    }
+
+    return { passed: true, message: check.successMessage };
   }
 
   static getDiagnosticRecommendations(workflowId: string, stepResults: Record<string, any>): {

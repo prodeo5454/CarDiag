@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useOBD } from '@/lib/obd/OBDContext';
 import { vehicleMakes, getAllMakeNames, getModelsByMake, getYearsByMakeModel, getEnginesByMakeModel, getTransmissionsByMakeModel } from '@/lib/vehicle-database';
 import { VehicleManager, type Vehicle as VehicleType } from '@/lib/vehicle-manager';
-import { MaintenanceTracker } from '@/lib/obd/maintenance-tracker';
+import { toast } from 'sonner';
 
 export default function VehiclesPage() {
   const { connectionState } = useOBD();
@@ -23,6 +23,10 @@ export default function VehiclesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [showStats, setShowStats] = useState(false);
+  const [selectedEngine, setSelectedEngine] = useState('');
+  const [formVin, setFormVin] = useState('');
+  const [formMileage, setFormMileage] = useState(0);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
 
   // Load vehicles from storage
   useEffect(() => {
@@ -48,7 +52,7 @@ export default function VehiclesPage() {
     transmission: 'Unknown',
     odometer: 0,
     currentMileage: 0,
-    fuelType: 'gasoline' as const,
+    fuelType: 'gasoline' as VehicleType['fuelType'],
     isPrimary: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -64,7 +68,7 @@ export default function VehiclesPage() {
     vin: '',
     engine: '',
     transmission: '',
-    fuelType: 'gasoline' as const,
+    fuelType: 'gasoline' as VehicleType['fuelType'],
     odometer: 0,
     currentMileage: 0,
     licensePlate: '',
@@ -89,19 +93,42 @@ export default function VehiclesPage() {
   });
 
   // Vehicle operations
+  const buildVehiclePayload = () => ({
+    ...newVehicle,
+    make: selectedMake || newVehicle.make,
+    model: selectedModel || newVehicle.model,
+    year: selectedYear ? parseInt(selectedYear, 10) : newVehicle.year,
+    name: newVehicle.name || `${selectedYear || newVehicle.year} ${selectedMake || newVehicle.make} ${selectedModel || newVehicle.model}`.trim(),
+    vin: formVin || newVehicle.vin || (connectionState.vin ?? ''),
+    engine: selectedEngine || newVehicle.engine || 'Unknown',
+    transmission: newVehicle.transmission || 'Unknown',
+    currentMileage: formMileage || newVehicle.currentMileage,
+    odometer: formMileage || newVehicle.odometer,
+  });
+
   const saveVehicle = () => {
-    const validation = VehicleManager.validateVehicle(newVehicle);
+    const payload = buildVehiclePayload();
+    const validation = VehicleManager.validateVehicle(payload);
     if (!validation.isValid) {
-      alert('Please fix the following errors:\n' + validation.errors.join('\n'));
+      toast.error(validation.errors.join('. '));
       return;
     }
 
-    const vehicle = VehicleManager.createVehicle(newVehicle);
-    setVehicles([...vehicles, vehicle]);
+    if (editingVehicleId) {
+      const updated = VehicleManager.updateVehicle(editingVehicleId, payload);
+      if (updated) {
+        setVehicles(VehicleManager.getVehicles());
+        toast.success('Vehicle updated');
+      }
+    } else {
+      const vehicle = VehicleManager.createVehicle(payload);
+      setVehicles(VehicleManager.getVehicles());
     
-    if (vehicle.isPrimary || vehicles.length === 0) {
-      setActiveVehicle(vehicle);
-      VehicleManager.setActiveVehicle(vehicle.id);
+      if (vehicle.isPrimary || vehicles.length === 0) {
+        setActiveVehicle(vehicle);
+        VehicleManager.setActiveVehicle(vehicle.id);
+      }
+      toast.success('Vehicle saved');
     }
 
     // Reset form
@@ -113,7 +140,7 @@ export default function VehiclesPage() {
       vin: '',
       engine: '',
       transmission: '',
-      fuelType: 'gasoline',
+      fuelType: 'gasoline' as VehicleType['fuelType'],
       odometer: 0,
       currentMileage: 0,
       licensePlate: '',
@@ -126,6 +153,64 @@ export default function VehiclesPage() {
     setSelectedMake('');
     setSelectedModel('');
     setSelectedYear('');
+    setSelectedEngine('');
+    setFormVin('');
+    setFormMileage(0);
+    setEditingVehicleId(null);
+  };
+
+  const saveProfileFromECU = () => {
+    if (!connectionState.vin) {
+      toast.error('No VIN detected from ECU');
+      return;
+    }
+    const payload = {
+      name: 'ECU Vehicle',
+      make: 'Unknown',
+      model: 'Unknown',
+      year: new Date().getFullYear(),
+      vin: connectionState.vin,
+      engine: 'Unknown',
+      transmission: 'Unknown',
+      fuelType: 'gasoline' as VehicleType['fuelType'],
+      odometer: 0,
+      currentMileage: 0,
+      tags: [] as string[],
+      isPrimary: vehicles.length === 0,
+    };
+    const vehicle = VehicleManager.createVehicle(payload);
+    setVehicles(VehicleManager.getVehicles());
+    setActiveVehicle(vehicle);
+    VehicleManager.setActiveVehicle(vehicle.id);
+    toast.success('Vehicle profile saved from ECU');
+  };
+
+  const startEditVehicle = (vehicle: VehicleType) => {
+    setEditingVehicleId(vehicle.id);
+    setSelectedMake(vehicle.make);
+    setSelectedModel(vehicle.model);
+    setSelectedYear(String(vehicle.year));
+    setSelectedEngine(vehicle.engine);
+    setFormVin(vehicle.vin);
+    setFormMileage(vehicle.currentMileage);
+    setNewVehicle({
+      name: vehicle.name,
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      vin: vehicle.vin,
+      engine: vehicle.engine,
+      transmission: vehicle.transmission,
+      fuelType: vehicle.fuelType,
+      odometer: vehicle.odometer,
+      currentMileage: vehicle.currentMileage,
+      licensePlate: vehicle.licensePlate || '',
+      color: vehicle.color || '',
+      notes: vehicle.notes || '',
+      tags: vehicle.tags,
+      isPrimary: vehicle.isPrimary,
+    });
+    setShowAddForm(true);
   };
 
   const deleteVehicle = (id: string) => {
@@ -165,9 +250,9 @@ export default function VehiclesPage() {
           const data = JSON.parse(e.target?.result as string);
           const result = VehicleManager.importVehicles(data);
           setVehicles(VehicleManager.getVehicles());
-          alert(`Imported ${result.imported} vehicles. ${result.duplicates} duplicates skipped.`);
-        } catch (error) {
-          alert('Failed to import vehicles. Please check the file format.');
+          toast.success(`Imported ${result.imported} vehicles. ${result.duplicates} duplicates skipped.`);
+        } catch {
+          toast.error('Failed to import vehicles. Please check the file format.');
         }
       };
       reader.readAsText(file);
@@ -302,7 +387,7 @@ export default function VehiclesPage() {
             </div>
           </div>
           <div className="mt-3 flex gap-2">
-            <button className="btn-primary flex-1 text-[10px] py-1.5">Save Profile</button>
+            <button onClick={saveProfileFromECU} className="btn-primary flex-1 text-[10px] py-1.5">Save Profile</button>
           </div>
         </div>
       )}
@@ -310,7 +395,7 @@ export default function VehiclesPage() {
       {/* Add Vehicle Form */}
       {showAddForm && (
         <div className="glass-card p-4 sm:p-6 animate-scale-in">
-          <h2 className="section-title mb-4">Add New Vehicle</h2>
+          <h2 className="section-title mb-4">{editingVehicleId ? 'Edit Vehicle' : 'Add New Vehicle'}</h2>
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Make Selector */}
             <div className="w-full lg:w-1/3">
@@ -378,24 +463,43 @@ export default function VehiclesPage() {
                     </div>
                     <div className="col-span-2 sm:col-span-1">
                       <label className="text-[10px] text-surface-400 uppercase mb-1 block">Engine</label>
-                      <select className="select-field w-full text-xs py-1.5" disabled={!selectedModel}>
+                      <select
+                        value={selectedEngine}
+                        onChange={(e) => setSelectedEngine(e.target.value)}
+                        className="select-field w-full text-xs py-1.5"
+                        disabled={!selectedModel}
+                      >
                         <option value="">Engine</option>
                         {engines.map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                     </div>
                     <div className="col-span-1">
                       <label className="text-[10px] text-surface-400 uppercase mb-1 block">VIN</label>
-                      <input type="text" placeholder="VIN..." className="input-field w-full text-xs py-1.5" maxLength={17} />
+                      <input
+                        type="text"
+                        value={formVin}
+                        onChange={(e) => setFormVin(e.target.value.toUpperCase())}
+                        placeholder="VIN..."
+                        className="input-field w-full text-xs py-1.5"
+                        maxLength={17}
+                      />
                     </div>
                     <div className="col-span-1">
                       <label className="text-[10px] text-surface-400 uppercase mb-1 block">Mileage</label>
-                      <input type="number" placeholder="0" className="input-field w-full text-xs py-1.5" />
+                      <input
+                        type="number"
+                        value={formMileage || ''}
+                        onChange={(e) => setFormMileage(Number(e.target.value))}
+                        placeholder="0"
+                        className="input-field w-full text-xs py-1.5"
+                        min={0}
+                      />
                     </div>
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
-                    <button onClick={() => setShowAddForm(false)} className="btn-secondary text-xs px-4 py-1.5">Cancel</button>
-                    <button className="btn-primary text-xs px-4 py-1.5">Save Vehicle</button>
+                    <button onClick={() => { setShowAddForm(false); setEditingVehicleId(null); }} className="btn-secondary text-xs px-4 py-1.5">Cancel</button>
+                    <button onClick={saveVehicle} className="btn-primary text-xs px-4 py-1.5">{editingVehicleId ? 'Update' : 'Save'} Vehicle</button>
                   </div>
                 </div>
               ) : (
@@ -475,7 +579,7 @@ export default function VehiclesPage() {
                     Activate
                   </button>
                 ) : (
-                  <button className="btn-secondary flex-1 text-[10px] py-1.5">Manage</button>
+                  <button onClick={() => startEditVehicle(vehicle)} className="btn-secondary flex-1 text-[10px] py-1.5">Manage</button>
                 )}
                 <button
                   onClick={() => deleteVehicle(vehicle.id)}

@@ -6,16 +6,23 @@ const API_CACHE = 'cardiag-api-v1';
 
 const STATIC_ASSETS = [
   '/',
+  '/advanced',
+  '/programming',
   '/diagnostics',
   '/live-data',
   '/vehicles',
   '/reports',
   '/maintenance',
+  '/analytics',
+  '/settings',
   '/connection',
   '/offline.html',
   '/manifest.json',
   '/icons/icon-192x192.svg',
   '/icons/icon-512x512.svg',
+  '/data/oem/dtc-bundle.json',
+  '/data/oem/manifest.json',
+  '/data/nhtsa/makes.json',
 ];
 
 // Install event - cache static assets
@@ -370,30 +377,12 @@ self.addEventListener('periodicsync', (event) => {
   }
 });
 
-// Update cached data periodically
+// Update cached data periodically (offline-first app — no backend API)
 async function updateCachedData() {
   try {
-    // Update vehicle data, maintenance records, etc.
-    const cache = await caches.open(API_CACHE);
-    
-    // Add endpoints to refresh
-    const endpoints = [
-      '/api/vehicles',
-      '/api/maintenance',
-      '/api/diagnostics'
-    ];
-    
-    for (const endpoint of endpoints) {
-      try {
-        const response = await fetch(endpoint);
-        if (response.ok) {
-          cache.put(endpoint, response);
-        }
-      } catch (error) {
-        console.log('Failed to update', endpoint, error);
-      }
-    }
+    const cache = await caches.open(STATIC_CACHE);
+    await cache.addAll(STATIC_ASSETS.filter(url => url !== '/'));
   } catch (error) {
-    console.log('Error updating cached data', error);
+    console.log('Error refreshing static cache', error);
   }
 }

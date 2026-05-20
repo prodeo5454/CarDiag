@@ -1,84 +1,137 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Wrench,
   Plus,
-  Calendar,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  Car,
   Droplets,
   Disc,
   Wind,
-  Zap,
   Gauge,
-  Filter,
-  ChevronDown,
+  Filter as FilterIcon,
   Plug,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useOBD } from '@/lib/obd/OBDContext';
+import { MaintenanceTracker, type MaintenanceSchedule } from '@/lib/obd/maintenance-tracker';
+import { VehicleManager } from '@/lib/vehicle-manager';
 
-interface MaintenanceTask {
-  id: string;
-  name: string;
-  icon: React.ElementType;
-  intervalMiles: number;
-  intervalMonths: number;
-  lastDone: string;
-  lastMileage: number;
-  currentMileage: number;
-  status: 'ok' | 'due-soon' | 'overdue';
-  estimatedCost: { min: number; max: number };
+type TaskStatus = 'ok' | 'due-soon' | 'overdue';
+
+const CATEGORY_ICONS: Record<MaintenanceSchedule['category'], React.ElementType> = {
+  oil: Droplets,
+  tire: Disc,
+  brake: Disc,
+  fluid: Droplets,
+  filter: Wind,
+  inspection: Gauge,
+  custom: Wrench,
+};
+
+function getScheduleStatus(schedule: MaintenanceSchedule, currentMileage: number): TaskStatus {
+  const now = new Date();
+  const dateOverdue = new Date(schedule.nextDate) < now;
+  const milesOverdue = currentMileage >= schedule.nextMileage;
+
+  if (dateOverdue || milesOverdue) return 'overdue';
+
+  const milesUntil = schedule.nextMileage - currentMileage;
+  const daysUntil =
+    (new Date(schedule.nextDate).getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+
+  if (milesUntil <= schedule.intervalMiles * 0.15 || daysUntil <= 30) return 'due-soon';
+  return 'ok';
 }
 
 export default function MaintenancePage() {
   const { connectionState } = useOBD();
   const isConnected = connectionState.status === 'connected';
 
-  // Default maintenance schedule - in a real app this would be customizable
-  const defaultTasks: Omit<MaintenanceTask, 'lastDone' | 'lastMileage' | 'currentMileage' | 'status'>[] = [
-    { id: 'oil', name: 'Engine Oil Change', icon: Droplets, intervalMiles: 7500, intervalMonths: 6, estimatedCost: { min: 40, max: 80 } },
-    { id: 'tires', name: 'Tire Rotation', icon: Disc, intervalMiles: 5000, intervalMonths: 6, estimatedCost: { min: 20, max: 50 } },
-    { id: 'air-filter', name: 'Air Filter Replacement', icon: Wind, intervalMiles: 15000, intervalMonths: 12, estimatedCost: { min: 15, max: 40 } },
-    { id: 'brakes', name: 'Brake Inspection', icon: Disc, intervalMiles: 15000, intervalMonths: 12, estimatedCost: { min: 50, max: 150 } },
-    { id: 'spark-plugs', name: 'Spark Plugs', icon: Zap, intervalMiles: 30000, intervalMonths: 24, estimatedCost: { min: 60, max: 150 } },
-    { id: 'transmission', name: 'Transmission Fluid', icon: Droplets, intervalMiles: 30000, intervalMonths: 24, estimatedCost: { min: 100, max: 250 } },
-    { id: 'coolant', name: 'Coolant Flush', icon: Droplets, intervalMiles: 30000, intervalMonths: 24, estimatedCost: { min: 70, max: 150 } },
-    { id: 'battery', name: 'Battery Check', icon: Zap, intervalMiles: 25000, intervalMonths: 12, estimatedCost: { min: 0, max: 0 } },
-  ];
-
-  // Generate tasks with current mileage from ECU (if available) or mock data
-  const [tasks] = useState<MaintenanceTask[]>(() => {
-    const currentMileage = 0; // In a real app, this would come from ECU or user input
-    return defaultTasks.map(task => ({
-      ...task,
-      lastDone: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      lastMileage: Math.max(0, currentMileage - Math.random() * 10000),
-      currentMileage,
-      status: 'ok' as const,
-    }));
-  });
-
-  const [filterStatus, setFilterStatus] = useState<'all' | 'ok' | 'due-soon' | 'overdue'>('all');
+  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
+  const [filterStatus, setFilterStatus] = useState<'all' | TaskStatus>('all');
   const [filterVehicle, setFilterVehicle] = useState('all');
-  const vehicles = ['Current Vehicle'];
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTaskName, setNewTaskName] = useState('');
+  const [newIntervalMiles, setNewIntervalMiles] = useState(7500);
+  const [newIntervalMonths, setNewIntervalMonths] = useState(6);
 
-  const filtered = tasks.filter(t =>
-    (filterStatus === 'all' || t.status === filterStatus) &&
-    (filterVehicle === 'all' || true) // Only one vehicle for now
-  );
+  const activeVehicle = VehicleManager.getActiveVehicle();
+  const vehicles = VehicleManager.getVehicles();
+  const vehicleId = activeVehicle?.id || 'default';
+  const currentMileage = activeVehicle?.currentMileage ?? 0;
+  const vin = activeVehicle?.vin || connectionState.vin || '';
+
+  const loadSchedules = useCallback(() => {
+    MaintenanceTracker.ensureDefaultSchedules(vehicleId, vin, currentMileage);
+    setSchedules(MaintenanceTracker.getMaintenanceSchedules(vehicleId));
+  }, [vehicleId, vin, currentMileage]);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
+
+  const tasks = schedules.map(schedule => ({
+    schedule,
+    status: getScheduleStatus(schedule, currentMileage),
+    Icon: CATEGORY_ICONS[schedule.category] || Wrench,
+  }));
+
+  const filtered = tasks.filter(t => {
+    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+    const matchesVehicle =
+      filterVehicle === 'all' || t.schedule.vehicleId === filterVehicle;
+    return matchesStatus && matchesVehicle;
+  });
 
   const overdue = tasks.filter(t => t.status === 'overdue').length;
   const dueSoon = tasks.filter(t => t.status === 'due-soon').length;
 
-  const getMilesUntilDue = (t: MaintenanceTask) => (t.lastMileage + t.intervalMiles) - t.currentMileage;
-  const getProgress = (t: MaintenanceTask) => {
-    const milesDone = t.currentMileage - t.lastMileage;
-    return Math.min(100, (milesDone / t.intervalMiles) * 100);
+  const handleMarkDone = (scheduleId: string) => {
+    const mileage = currentMileage || schedules.find(s => s.id === scheduleId)?.lastMileage || 0;
+    if (MaintenanceTracker.completeMaintenanceSchedule(scheduleId, mileage)) {
+      toast.success('Service recorded');
+      loadSchedules();
+    } else {
+      toast.error('Failed to record service');
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!newTaskName.trim()) {
+      toast.error('Task name is required');
+      return;
+    }
+
+    await MaintenanceTracker.createMaintenanceSchedule({
+      vehicleId,
+      vin,
+      task: newTaskName.trim(),
+      category: 'custom',
+      intervalMiles: newIntervalMiles,
+      intervalMonths: newIntervalMonths,
+      lastMileage: currentMileage,
+      lastDate: new Date().toISOString(),
+      priority: 'medium',
+      estimatedCost: { min: 0, max: 0, currency: 'USD' },
+      estimatedDuration: 1,
+      difficulty: 'medium',
+    });
+
+    toast.success('Maintenance task added');
+    setNewTaskName('');
+    setShowAddForm(false);
+    loadSchedules();
+  };
+
+  const getMilesUntilDue = (schedule: MaintenanceSchedule) =>
+    schedule.nextMileage - currentMileage;
+
+  const getProgress = (schedule: MaintenanceSchedule) => {
+    const milesDone = currentMileage - schedule.lastMileage;
+    return Math.min(100, (milesDone / schedule.intervalMiles) * 100);
   };
 
   return (
@@ -86,7 +139,10 @@ export default function MaintenancePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white">Maintenance</h1>
-          <p className="text-surface-400 text-xs sm:text-sm mt-1">Track and manage vehicle service</p>
+          <p className="text-surface-400 text-xs sm:text-sm mt-1">
+            Track and manage vehicle service
+            {activeVehicle ? ` — ${activeVehicle.name}` : ''}
+          </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {!isConnected && (
@@ -94,13 +150,63 @@ export default function MaintenancePage() {
               <Plug className="w-3.5 h-3.5 sm:w-4 h-4" /> <span>Connect</span>
             </Link>
           )}
-          <button className="btn-primary flex items-center gap-2 text-xs sm:text-sm px-4 py-2 sm:px-5 sm:py-2.5">
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="btn-primary flex items-center gap-2 text-xs sm:text-sm px-4 py-2 sm:px-5 sm:py-2.5"
+          >
             <Plus className="w-3.5 h-3.5 sm:w-4 h-4" /> <span>Add Task</span>
           </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {showAddForm && (
+        <div className="glass-card p-4 sm:p-5 animate-scale-in">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-title">Add Maintenance Task</h2>
+            <button onClick={() => setShowAddForm(false)} className="p-1 text-surface-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-3">
+              <label className="text-[10px] text-surface-400 uppercase mb-1 block">Task Name</label>
+              <input
+                type="text"
+                value={newTaskName}
+                onChange={(e) => setNewTaskName(e.target.value)}
+                placeholder="e.g. Cabin air filter"
+                className="input-field w-full text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-surface-400 uppercase mb-1 block">Interval (miles)</label>
+              <input
+                type="number"
+                value={newIntervalMiles}
+                onChange={(e) => setNewIntervalMiles(Number(e.target.value))}
+                className="input-field w-full text-sm"
+                min={1000}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-surface-400 uppercase mb-1 block">Interval (months)</label>
+              <input
+                type="number"
+                value={newIntervalMonths}
+                onChange={(e) => setNewIntervalMonths(Number(e.target.value))}
+                className="input-field w-full text-sm"
+                min={1}
+              />
+            </div>
+            <div className="flex items-end">
+              <button onClick={handleAddTask} className="btn-primary w-full text-sm py-2">
+                Save Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="stat-card p-3 sm:p-4">
           <span className="text-surface-400 text-[10px] sm:text-xs">Total Tasks</span>
@@ -116,20 +222,22 @@ export default function MaintenancePage() {
         </div>
         <div className="stat-card p-3 sm:p-4">
           <span className="text-surface-400 text-[10px] sm:text-xs">Healthy</span>
-          <span className="text-xl sm:text-3xl font-bold text-success">{tasks.length - overdue - dueSoon}</span>
+          <span className="text-xl sm:text-3xl font-bold text-success">
+            {tasks.length - overdue - dueSoon}
+          </span>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="glass-card p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-          <Filter className="w-3.5 h-3.5 text-surface-400 flex-shrink-0" />
+          <FilterIcon className="w-3.5 h-3.5 text-surface-400 flex-shrink-0" />
           <div className="flex gap-1.5">
             {(['all', 'overdue', 'due-soon', 'ok'] as const).map(status => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={cn('px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all whitespace-nowrap',
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all whitespace-nowrap',
                   filterStatus === status
                     ? 'bg-brand-500/20 text-brand-400 border border-brand-500'
                     : 'bg-surface-800/50 text-surface-400 border border-transparent'
@@ -146,60 +254,83 @@ export default function MaintenancePage() {
           className="select-field text-xs py-1.5 sm:ml-auto"
         >
           <option value="all">All Vehicles</option>
-          {vehicles.map(v => <option key={v} value={v}>{v}</option>)}
+          {vehicles.map(v => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Task List */}
       <div className="grid grid-cols-1 gap-3">
-        {filtered.map(task => {
-          const Icon = task.icon;
-          const milesLeft = getMilesUntilDue(task);
-          const progress = getProgress(task);
+        {filtered.map(({ schedule, status, Icon }) => {
+          const milesLeft = getMilesUntilDue(schedule);
+          const progress = getProgress(schedule);
 
           return (
-            <div key={task.id} className={cn(
-              'glass-card p-4 sm:p-5 transition-all',
-              task.status === 'overdue' && 'border-danger/30 shadow-[0_0_15px_-5px_rgba(239,68,68,0.1)]',
-              task.status === 'due-soon' && 'border-warning/20'
-            )}>
+            <div
+              key={schedule.id}
+              className={cn(
+                'glass-card p-4 sm:p-5 transition-all',
+                status === 'overdue' && 'border-danger/30',
+                status === 'due-soon' && 'border-warning/20'
+              )}
+            >
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                {/* Icon & Title */}
                 <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                  <div className={cn('w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0',
-                    task.status === 'ok' ? 'bg-success/10' : task.status === 'due-soon' ? 'bg-warning/10' : 'bg-danger/10'
-                  )}>
-                    <Icon className={cn('w-5 h-5 sm:w-6 sm:h-6',
-                      task.status === 'ok' ? 'text-success' : task.status === 'due-soon' ? 'text-warning' : 'text-danger'
-                    )} />
+                  <div
+                    className={cn(
+                      'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                      status === 'ok' ? 'bg-success/10' : status === 'due-soon' ? 'bg-warning/10' : 'bg-danger/10'
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'w-5 h-5 sm:w-6 sm:h-6',
+                        status === 'ok' ? 'text-success' : status === 'due-soon' ? 'text-warning' : 'text-danger'
+                      )}
+                    />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="text-sm font-bold text-white truncate">{task.name}</h3>
-                      <span className={cn('text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider',
-                        task.status === 'ok' ? 'bg-success/10 text-success' : task.status === 'due-soon' ? 'bg-warning/10 text-warning' : 'bg-danger/10 text-danger'
-                      )}>
-                        {task.status === 'ok' ? 'OK' : task.status === 'due-soon' ? 'Soon' : 'Overdue'}
+                      <h3 className="text-sm font-bold text-white truncate">{schedule.task}</h3>
+                      <span
+                        className={cn(
+                          'text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider',
+                          status === 'ok'
+                            ? 'bg-success/10 text-success'
+                            : status === 'due-soon'
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-danger/10 text-danger'
+                        )}
+                      >
+                        {status === 'ok' ? 'OK' : status === 'due-soon' ? 'Soon' : 'Overdue'}
                       </span>
                     </div>
-                    <p className="text-[10px] text-surface-500 flex items-center gap-1.5">
-                      Last: {new Date(task.lastDone).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })} • {task.intervalMiles / 1000}k mi
+                    <p className="text-[10px] text-surface-500">
+                      Last: {new Date(schedule.lastDate).toLocaleDateString(undefined, {
+                        month: 'short',
+                        year: 'numeric',
+                      })}{' '}
+                      • {schedule.intervalMiles / 1000}k mi interval
                     </p>
                   </div>
                 </div>
 
-                {/* Progress & Actions */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:min-w-[300px]">
                   <div className="flex-1">
                     <div className="flex justify-between text-[9px] mb-1 px-0.5">
                       <span className="text-surface-500">Service Progress</span>
                       <span className={cn('font-bold', milesLeft > 0 ? 'text-surface-400' : 'text-danger')}>
-                        {milesLeft > 0 ? `${milesLeft.toLocaleString()} mi left` : `${Math.abs(milesLeft).toLocaleString()} mi past`}
+                        {milesLeft > 0
+                          ? `${milesLeft.toLocaleString()} mi left`
+                          : `${Math.abs(milesLeft).toLocaleString()} mi past`}
                       </span>
                     </div>
                     <div className="h-1.5 bg-surface-800 rounded-full overflow-hidden">
                       <div
-                        className={cn('h-full rounded-full transition-all duration-700',
+                        className={cn(
+                          'h-full rounded-full transition-all duration-700',
                           progress < 70 ? 'bg-success' : progress < 90 ? 'bg-warning' : 'bg-danger'
                         )}
                         style={{ width: `${Math.min(100, progress)}%` }}
@@ -207,11 +338,17 @@ export default function MaintenancePage() {
                     </div>
                   </div>
 
-                  <button className={cn('px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap',
-                    task.status === 'overdue' ? 'bg-danger/20 text-danger border border-danger/20 hover:bg-danger/30'
-                    : task.status === 'due-soon' ? 'bg-warning/20 text-warning border border-warning/20 hover:bg-warning/30'
-                    : 'bg-surface-800/50 text-surface-400 border border-surface-700/50 hover:text-white'
-                  )}>
+                  <button
+                    onClick={() => handleMarkDone(schedule.id)}
+                    className={cn(
+                      'px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap',
+                      status === 'overdue'
+                        ? 'bg-danger/20 text-danger border border-danger/20 hover:bg-danger/30'
+                        : status === 'due-soon'
+                          ? 'bg-warning/20 text-warning border border-warning/20 hover:bg-warning/30'
+                          : 'bg-surface-800/50 text-surface-400 border border-surface-700/50 hover:text-white'
+                    )}
+                  >
                     Mark Done
                   </button>
                 </div>
@@ -230,3 +367,4 @@ export default function MaintenancePage() {
     </div>
   );
 }
+

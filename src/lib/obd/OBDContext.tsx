@@ -4,6 +4,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import type { OBDAdapter, OBDConnectionState, OBDPIDDefinition, ConnectionType } from '@/types';
 import { OBDConnectionManager, getConnectionManager, type InitStep, type ECULiveReading } from './connection';
 import { STANDARD_PIDS } from './pids';
+import { recordConnectionEvent } from '@/lib/connection-events';
+import {
+  getOBDCommandTimeout,
+  getPollingIntervalMs,
+  getPreferences,
+  LAST_ADAPTER_KEY,
+} from '@/lib/preferences';
+import { getAdapterById, rememberAdapter, rememberAdapters } from '@/lib/adapter-history';
 
 // ─── Context Types ──────────────────────────────────────────────────────────
 
@@ -40,6 +48,11 @@ export interface OBDContextValue {
   isPolling: boolean;
   startPolling: (pids?: OBDPIDDefinition[]) => void;
   stopPolling: () => void;
+  refreshLiveData: (pids?: OBDPIDDefinition[]) => Promise<void>;
+
+  // Errors from last operation
+  lastError: string | null;
+  clearError: () => void;
 
   // Manager reference
   manager: OBDConnectionManager;
@@ -57,6 +70,8 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   const [initSteps, setInitSteps] = useState<InitStep[]>([]);
   const [adapters, setAdapters] = useState<OBDAdapter[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const lastAdapterRef = useRef<OBDAdapter | null>(null);
 
   // Live data state
   const [liveReadings, setLiveReadings] = useState<Map<string, ECULiveReading>>(new Map());
@@ -64,6 +79,39 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
   const [isPolling, setIsPolling] = useState(false);
   const pollingRef = useRef(false);
   const pollingPIDsRef = useRef<OBDPIDDefinition[]>([]);
+
+  // Optional auto-reconnect to last adapter
+  useEffect(() => {
+    const prefs = getPreferences();
+    if (!prefs.obd.autoConnect) return;
+
+    let cancelled = false;
+    (async () => {
+      if (manager.getState().status === 'connected') return;
+      try {
+        let adapter: OBDAdapter | null = null;
+        if (prefs.obd.preferredAdapter) {
+          adapter = getAdapterById(prefs.obd.preferredAdapter);
+        }
+        if (!adapter) {
+          const raw = localStorage.getItem(LAST_ADAPTER_KEY);
+          if (raw) adapter = JSON.parse(raw) as OBDAdapter;
+        }
+        if (!adapter || cancelled) return;
+        const ok = await manager.connect(adapter);
+        if (!cancelled) {
+          setConnectionState(manager.getState());
+          if (ok) setLastError(null);
+        }
+      } catch {
+        /* last adapter unavailable */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [manager]);
 
   // Subscribe to connection events
   useEffect(() => {
@@ -92,7 +140,10 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         results = await manager.scanWiFi();
       }
       setAdapters(results);
+      if (results.length) rememberAdapters(results);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Scan failed';
+      setLastError(message);
       console.error('[OBD] Scan failed:', err);
     } finally {
       setScanning(false);
@@ -102,9 +153,40 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
 
   // Connect
   const connect = useCallback(async (adapter: OBDAdapter) => {
-    const success = await manager.connect(adapter);
-    setConnectionState(manager.getState());
-    return success;
+    lastAdapterRef.current = adapter;
+    try {
+      const success = await manager.connect(adapter);
+      setConnectionState(manager.getState());
+      recordConnectionEvent({
+        adapterId: adapter.id,
+        adapterName: adapter.name,
+        connectionType: adapter.type,
+        success,
+      });
+      if (!success) {
+        setLastError('Failed to connect to adapter');
+      } else {
+        setLastError(null);
+        try {
+          localStorage.setItem(LAST_ADAPTER_KEY, JSON.stringify(adapter));
+          rememberAdapter(adapter);
+        } catch {
+          /* quota */
+        }
+      }
+      return success;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Connection failed';
+      setLastError(message);
+      recordConnectionEvent({
+        adapterId: adapter.id,
+        adapterName: adapter.name,
+        connectionType: adapter.type,
+        success: false,
+      });
+      setConnectionState(manager.getState());
+      return false;
+    }
   }, [manager]);
 
   // Disconnect
@@ -119,7 +201,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
 
   // Send raw command
   const sendCommand = useCallback(async (cmd: string) => {
-    return manager.sendCommand(cmd);
+    return manager.sendCommand(cmd, getOBDCommandTimeout());
   }, [manager]);
 
   // Read single PID
@@ -182,7 +264,7 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Small delay between poll cycles to not overwhelm the adapter
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, getPollingIntervalMs()));
       }
       setIsPolling(false);
     };
@@ -194,6 +276,33 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
     pollingRef.current = false;
     setIsPolling(false);
   }, []);
+
+  const refreshLiveData = useCallback(async (pids?: OBDPIDDefinition[]) => {
+    if (!manager.isConnected()) return;
+
+    const pollPids = pids || manager.getSupportedPIDDefinitions();
+    const readings = await manager.readMultiplePIDs(pollPids);
+    const MAX_HISTORY = 120;
+
+    setLiveReadings(prev => {
+      const next = new Map(prev);
+      for (const r of readings) {
+        next.set(r.pid.pid, r);
+      }
+      return next;
+    });
+
+    setLiveHistory(prev => {
+      const next = new Map(prev);
+      for (const r of readings) {
+        const existing = next.get(r.pid.pid) || [];
+        const updated = [...existing, { time: r.timestamp, value: r.value }];
+        if (updated.length > MAX_HISTORY) updated.splice(0, updated.length - MAX_HISTORY);
+        next.set(r.pid.pid, updated);
+      }
+      return next;
+    });
+  }, [manager]);
 
   const value: OBDContextValue = {
     connectionState,
@@ -217,6 +326,9 @@ export function OBDProvider({ children }: { children: React.ReactNode }) {
     isPolling,
     startPolling,
     stopPolling,
+    refreshLiveData,
+    lastError,
+    clearError: () => setLastError(null),
     manager,
   };
 

@@ -29,90 +29,41 @@ import {
 } from 'lucide-react';
 import { MaintenanceTracker } from '@/lib/obd/maintenance-tracker';
 import { usePWA } from '@/components/PWAProvider';
-
-interface UserPreferences {
-  theme: 'dark' | 'light' | 'auto';
-  language: 'en' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'ru' | 'ja' | 'zh' | 'ko';
-  units: 'metric' | 'imperial';
-  notifications: {
-    enabled: boolean;
-    maintenance: boolean;
-    diagnostics: boolean;
-    connection: boolean;
-    updates: boolean;
-  };
-  data: {
-    autoBackup: boolean;
-    backupInterval: 'daily' | 'weekly' | 'monthly';
-    retentionDays: number;
-    compression: boolean;
-  };
-  display: {
-    dashboardLayout: 'compact' | 'standard' | 'detailed';
-    refreshRate: 'fast' | 'normal' | 'slow';
-    showTooltips: boolean;
-    animations: boolean;
-  };
-  obd: {
-    autoConnect: boolean;
-    preferredAdapter: string;
-    scanInterval: number;
-    timeout: number;
-    retryAttempts: number;
-  };
-}
+import AISettingsCard from '@/components/settings/AISettingsCard';
+import OEMDatabaseCard from '@/components/settings/OEMDatabaseCard';
+import { usePreferences } from '@/components/providers/PreferencesProvider';
+import {
+  type CarDiagPreferences,
+  DEFAULT_PREFERENCES,
+  getPreferences,
+  savePreferences as persistPreferences,
+} from '@/lib/preferences';
+import { getKnownAdapters } from '@/lib/adapter-history';
+import SettingsToggle from '@/components/ui/SettingsToggle';
 
 export default function SettingsPage() {
   const { isInstalled, canInstall, install } = usePWA();
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    theme: 'dark',
-    language: 'en',
-    units: 'metric',
-    notifications: {
-      enabled: true,
-      maintenance: true,
-      diagnostics: true,
-      connection: true,
-      updates: true,
-    },
-    data: {
-      autoBackup: true,
-      backupInterval: 'weekly',
-      retentionDays: 365,
-      compression: true,
-    },
-    display: {
-      dashboardLayout: 'standard',
-      refreshRate: 'normal',
-      showTooltips: true,
-      animations: true,
-    },
-    obd: {
-      autoConnect: false,
-      preferredAdapter: '',
-      scanInterval: 1000,
-      timeout: 5000,
-      retryAttempts: 3,
-    },
-  });
+  const { setPreferences: applyPreferences } = usePreferences();
+  const [preferences, setPreferences] = useState<CarDiagPreferences>(DEFAULT_PREFERENCES);
 
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [knownAdapters, setKnownAdapters] = useState<{ id: string; name: string; type: string }[]>([]);
 
-  // Load preferences from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('cardiag-preferences');
-    if (saved) {
-      try {
-        setPreferences(JSON.parse(saved));
-      } catch (error) {
-        console.error('Failed to load preferences:', error);
-      }
-    }
+    setPreferences(getPreferences());
+    setKnownAdapters(getKnownAdapters());
   }, []);
 
-  const updatePreference = (category: keyof UserPreferences, key: string, value: any) => {
+  const applyThemePreview = (theme: CarDiagPreferences['theme']) => {
+    const next = { ...preferences, theme };
+    setPreferences(next);
+    setHasChanges(true);
+    applyPreferences(next);
+  };
+
+  const updatePreference = (category: keyof CarDiagPreferences, key: string, value: unknown) => {
     setPreferences(prev => ({
       ...prev,
       [category]: typeof prev[category] === 'object' 
@@ -122,7 +73,12 @@ export default function SettingsPage() {
     setHasChanges(true);
   };
 
-  const updateNestedPreference = (category: keyof UserPreferences, subcategory: string, key: string, value: any) => {
+  const updateNestedPreference = (
+    category: keyof CarDiagPreferences,
+    subcategory: string,
+    key: string,
+    value: unknown
+  ) => {
     setPreferences(prev => ({
       ...prev,
       [category]: {
@@ -139,7 +95,9 @@ export default function SettingsPage() {
   const savePreferences = async () => {
     setIsSaving(true);
     try {
-      localStorage.setItem('cardiag-preferences', JSON.stringify(preferences));
+      persistPreferences(preferences);
+      applyPreferences(preferences);
+      setKnownAdapters(getKnownAdapters());
       setHasChanges(false);
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -227,7 +185,7 @@ export default function SettingsPage() {
       {/* Settings Grid */}
       <div className="grid grid-cols-12 gap-6">
         {/* Appearance */}
-        <div className="col-span-4 glass-card p-5">
+        <div className="col-span-12 lg:col-span-4 glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <Palette className="w-5 h-5 text-brand-400" />
             <h2 className="section-title">Appearance</h2>
@@ -244,7 +202,7 @@ export default function SettingsPage() {
                 ].map(({ value, icon: Icon, label }) => (
                   <button
                     key={value}
-                    onClick={() => updatePreference('theme', '', value)}
+                    onClick={() => applyThemePreview(value as CarDiagPreferences['theme'])}
                     className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
                       preferences.theme === value
                         ? 'bg-brand-500/20 border-brand-500'
@@ -256,6 +214,7 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </div>
+              <p className="text-[10px] text-surface-500 mt-2">Light theme is beta — some screens may stay dark.</p>
             </div>
 
             <div>
@@ -263,7 +222,7 @@ export default function SettingsPage() {
               <select
                 value={preferences.language}
                 onChange={(e) => updatePreference('language', '', e.target.value)}
-                className="w-full px-3 py-2 bg-surface-800 border border-surface-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="select-field w-full text-sm"
               >
                 <option value="en">English</option>
                 <option value="es">Español</option>
@@ -303,7 +262,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Notifications */}
-        <div className="col-span-4 glass-card p-5">
+        <div className="col-span-12 lg:col-span-4 glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <Bell className="w-5 h-5 text-brand-400" />
             <h2 className="section-title">Notifications</h2>
@@ -340,7 +299,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Data Management */}
-        <div className="col-span-4 glass-card p-5">
+        <div className="col-span-12 lg:col-span-4 glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <Database className="w-5 h-5 text-brand-400" />
             <h2 className="section-title">Data Management</h2>
@@ -420,7 +379,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Display Settings */}
-        <div className="col-span-4 glass-card p-5">
+        <div className="col-span-12 lg:col-span-4 glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <Monitor className="w-5 h-5 text-brand-400" />
             <h2 className="section-title">Display</h2>
@@ -497,35 +456,38 @@ export default function SettingsPage() {
         </div>
 
         {/* OBD Settings */}
-        <div className="col-span-4 glass-card p-5">
+        <div className="col-span-12 lg:col-span-4 glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <Car className="w-5 h-5 text-brand-400" />
             <h2 className="section-title">OBD Settings</h2>
           </div>
           
           <div className="space-y-4">
-            {[
-              { key: 'autoConnect', label: 'Auto Connect', description: 'Connect to last used adapter' },
-            ].map(({ key, label, description }) => (
-              <div key={key} className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white">{label}</p>
-                  <p className="text-xs text-surface-500">{description}</p>
-                </div>
-                <button
-                  onClick={() => updateNestedPreference('obd', '', key, !preferences.obd[key as keyof typeof preferences.obd])}
-                  className={`w-12 h-6 rounded-full transition-all ${
-                    preferences.obd[key as keyof typeof preferences.obd]
-                      ? 'bg-brand-500'
-                      : 'bg-surface-700'
-                  }`}
-                >
-                  <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                    preferences.obd[key as keyof typeof preferences.obd] ? 'translate-x-6' : 'translate-x-0.5'
-                  }`} />
-                </button>
-              </div>
-            ))}
+            <SettingsToggle
+              label="Auto Connect"
+              description="Reconnect to preferred or last adapter on launch"
+              checked={preferences.obd.autoConnect}
+              onChange={(v) => updateNestedPreference('obd', '', 'autoConnect', v)}
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-surface-300 mb-2">Preferred adapter</label>
+              <select
+                value={preferences.obd.preferredAdapter}
+                onChange={(e) => updateNestedPreference('obd', '', 'preferredAdapter', e.target.value)}
+                className="select-field w-full text-sm"
+              >
+                <option value="">Any — use last connected</option>
+                {knownAdapters.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.type})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-surface-500 mt-1">
+                Scan on Connection to populate. Star marks preferred in the list.
+              </p>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-surface-300 mb-2">Scan Interval (ms)</label>
@@ -541,15 +503,17 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-surface-300 mb-2">Timeout (ms)</label>
+              <label className="block text-sm font-medium text-surface-300 mb-2">Command timeout (ms)</label>
               <input
                 type="number"
                 value={preferences.obd.timeout}
-                onChange={(e) => updateNestedPreference('obd', '', 'timeout', parseInt(e.target.value))}
-                className="w-full px-3 py-2 bg-surface-800 border border-surface-700/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                min="1000"
-                max="30000"
-                step="1000"
+                onChange={(e) =>
+                  updateNestedPreference('obd', '', 'timeout', parseInt(e.target.value, 10) || 5000)
+                }
+                className="input-field w-full text-sm"
+                min={1000}
+                max={30000}
+                step={1000}
               />
             </div>
 
@@ -568,8 +532,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <AISettingsCard />
+        <OEMDatabaseCard />
+
         {/* PWA Info */}
-        <div className="col-span-4 glass-card p-5">
+        <div className="col-span-12 lg:col-span-4 glass-card p-5">
           <div className="flex items-center gap-3 mb-4">
             <Smartphone className="w-5 h-5 text-brand-400" />
             <h2 className="section-title">App Info</h2>

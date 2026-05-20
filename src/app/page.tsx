@@ -19,6 +19,7 @@ import {
   Clock,
   Plug,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -142,6 +143,46 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <Link
+        href="/advanced"
+        className="glass-card block p-4 sm:p-5 border border-brand-500/30 bg-gradient-to-r from-brand-600/15 to-transparent hover:border-brand-500/50 transition-all group"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/20 flex items-center justify-center glow-brand">
+              <Sparkles className="w-5 h-5 text-brand-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Advanced AI Diagnostics</p>
+              <p className="text-xs text-surface-500 mt-0.5">
+                EV/hybrid HV analysis • guided workflows • J1939 • AI repair plans
+              </p>
+            </div>
+          </div>
+          <ArrowUpRight className="w-5 h-5 text-brand-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+        </div>
+      </Link>
+
+      <Link
+        href="/programming"
+        className="glass-card block p-4 sm:p-5 border border-warning/25 bg-gradient-to-r from-warning/10 to-transparent hover:border-warning/40 transition-all group"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center">
+              <Cpu className="w-5 h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">ECU Coding &amp; Key Programming</p>
+              <p className="text-xs text-surface-500 mt-0.5">
+                UDS read/write • immobilizer routines • security access (pro adapter recommended)
+              </p>
+            </div>
+          </div>
+          <ArrowUpRight className="w-5 h-5 text-warning group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+        </div>
+      </Link>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -106,6 +106,20 @@
           "sizes": "96x96"
         }
       ]
+    },
+    {
+      "name": "ECU Programming",
+      "short_name": "Programming",
+      "description": "ECU coding and key programming",
+      "url": "/programming",
+      "icons": [{ "src": "/icons/icon-192x192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Advanced AI",
+      "short_name": "Advanced",
+      "description": "AI diagnostics and EV analysis",
+      "url": "/advanced",
+      "icons": [{ "src": "/icons/icon-192x192.svg", "sizes": "192x192" }]
     }
   ],
   "prefer_related_applications": false,

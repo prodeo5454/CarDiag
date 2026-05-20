@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { loadOEMDatabase, getOEMDatabaseStats, runOEMAutoSyncIfDue } from '@/lib/oem-database';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -108,6 +109,18 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
     // Initialize
     checkInstalled();
     registerServiceWorker();
+
+    void loadOEMDatabase().then(async (data) => {
+      if (data?.stats) {
+        console.log(
+          `[CarDiag] OEM database loaded: ${data.stats.uniqueCodes} codes, ${data.stats.totalDefinitions} definitions`
+        );
+      }
+      const sync = await runOEMAutoSyncIfDue();
+      if (sync.ran) {
+        console.log(`[CarDiag] ${sync.message}`);
+      }
+    });
 
     // Add event listeners
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
